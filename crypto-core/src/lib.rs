@@ -1,5 +1,6 @@
 use openmls::prelude::Ciphersuite;
 
+pub mod engine;
 pub mod errors;
 pub mod identity;
 
