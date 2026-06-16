@@ -295,9 +295,32 @@ mod tests {
         // Alice sends a new-epoch message.
         let ct = alice.encrypt(&group_id, b"secret after removal").unwrap();
 
-        // Bob must NOT be able to decrypt it.
-        let result = bob.process(&group_id, &ct);
-        assert!(result.is_err(), "removed member must not decrypt new-epoch messages");
+        // Guard against a false pass: Bob must still be tracking the group, so
+        // the failure below is genuine eviction — not a missing-group lookup error.
+        assert!(bob.has_group(&group_id), "Bob must still track the group locally");
+
+        // Bob must NOT be able to decrypt it, and the failure must be an MLS
+        // eviction/decryption error (not UnknownGroup or a deserialize error).
+        match bob.process(&group_id, &ct) {
+            Err(EngineError::Mls(_)) => {}
+            other => panic!(
+                "removed member must fail to decrypt with an MLS error, got {:?}",
+                other
+            ),
+        }
+
+        // Positive control: Alice (still a member) decrypts her own new-epoch
+        // traffic, proving the epoch itself is functional — only Bob is locked out.
+        let mut carol = Engine::new(b"carol@corp");
+        let add_carol = alice
+            .add_member(&group_id, &carol.key_package_bytes().unwrap())
+            .unwrap();
+        carol.join_from_welcome(&add_carol.welcome).unwrap();
+        let ct2 = alice.encrypt(&group_id, b"still working").unwrap();
+        match carol.process(&group_id, &ct2).unwrap() {
+            Incoming::Application(pt) => assert_eq!(pt, b"still working"),
+            other => panic!("expected application message, got {:?}", other),
+        }
     }
 
     #[test]
