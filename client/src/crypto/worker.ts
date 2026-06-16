@@ -1,7 +1,6 @@
 import init, { WasmEngine } from "./wasm-pkg/crypto_core.js";
 import type { CryptoRequest, CryptoResponse } from "./protocol";
 
-let engine: WasmEngine | null = null;
 let ready: Promise<void> | null = null;
 
 // Minimal, browser-safe view of the node `process` global so we can detect the
@@ -43,49 +42,41 @@ async function initWasm(): Promise<void> {
   await init();
 }
 
-async function ensureEngine(name: string): Promise<WasmEngine> {
-  if (!ready) ready = initWasm();
-  await ready;
-  if (!engine) engine = new WasmEngine(name);
-  return engine;
-}
-
-/** Pure dispatch — testable without a real Worker. */
-export async function handleRequest(
-  name: string,
+/** Pure dispatch over a specific engine — shared by every dispatcher. */
+async function dispatchTo(
+  engine: WasmEngine,
   req: CryptoRequest,
 ): Promise<CryptoResponse> {
   try {
-    const e = await ensureEngine(name);
     let result: unknown;
     switch (req.kind) {
       case "keyPackage":
-        result = e.key_package_bytes();
+        result = engine.key_package_bytes();
         break;
       case "createGroup":
-        e.create_group(req.groupId);
+        engine.create_group(req.groupId);
         result = null;
         break;
       case "createGroupWithCompliance":
-        result = e.create_group_with_compliance(
+        result = engine.create_group_with_compliance(
           req.groupId,
           req.complianceKeyPackage,
         );
         break;
       case "addMember": {
-        const r = e.add_member(req.groupId, req.keyPackage);
+        const r = engine.add_member(req.groupId, req.keyPackage);
         result = { commit: r.commit, welcome: r.welcome };
         break;
       }
       case "joinFromWelcome":
-        e.join_from_welcome(req.welcome);
+        engine.join_from_welcome(req.welcome);
         result = null;
         break;
       case "encrypt":
-        result = e.encrypt(req.groupId, req.plaintext);
+        result = engine.encrypt(req.groupId, req.plaintext);
         break;
       case "decrypt":
-        result = e.decrypt(req.groupId, req.message);
+        result = engine.decrypt(req.groupId, req.message);
         break;
     }
     return { id: req.id, ok: true, result };
@@ -94,13 +85,43 @@ export async function handleRequest(
   }
 }
 
+/**
+ * Create a dispatcher that owns its own independent `WasmEngine`. The WASM
+ * module is initialised once per process (shared, memoized), but each
+ * dispatcher's engine instance has fully independent OpenMLS state.
+ */
+export function createDispatcher(name: string) {
+  let engine: WasmEngine | null = null;
+  async function handleRequest(req: CryptoRequest): Promise<CryptoResponse> {
+    if (!ready) ready = initWasm();
+    await ready;
+    if (!engine) engine = new WasmEngine(name);
+    return dispatchTo(engine, req);
+  }
+  return { handleRequest };
+}
+
+// A single lazily-created default dispatcher backs the module-level
+// `handleRequest(name, req)`, preserving the historical module-global engine
+// behavior (the engine is keyed by the first name seen).
+let defaultDispatcher: ReturnType<typeof createDispatcher> | null = null;
+
+/** Pure dispatch — testable without a real Worker. */
+export async function handleRequest(
+  name: string,
+  req: CryptoRequest,
+): Promise<CryptoResponse> {
+  if (!defaultDispatcher) defaultDispatcher = createDispatcher(name);
+  return defaultDispatcher.handleRequest(req);
+}
+
 // Worker entry: the device name is passed once via the first message.
 if (typeof self !== "undefined" && "onmessage" in self) {
-  let deviceName = "device";
+  let dispatcher: ReturnType<typeof createDispatcher> | null = null;
   self.onmessage = async (ev: MessageEvent) => {
     const data = ev.data as { name?: string } & CryptoRequest;
-    if (data.name) deviceName = data.name;
-    const res = await handleRequest(deviceName, data);
+    if (!dispatcher) dispatcher = createDispatcher(data.name ?? "device");
+    const res = await dispatcher.handleRequest(data);
     (self as unknown as Worker).postMessage(res);
   };
 }
