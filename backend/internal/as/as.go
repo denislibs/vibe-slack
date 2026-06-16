@@ -104,14 +104,15 @@ func (s *Service) LoginStart(ctx context.Context, email string, ke1 []byte) (str
 // LoginFinish verifies KE3. Returns a session token and whether device enrollment
 // is still required. Unknown users and wrong passwords both yield ErrAuthFailed.
 func (s *Service) LoginFinish(ctx context.Context, loginID string, ke3 []byte) (string, bool, error) {
-	data, err := s.rdb.Get(ctx, loginKey(loginID)).Bytes()
+	// Atomic single-use read+delete: GETDEL closes the replay/concurrency window
+	// where two LoginFinish calls with the same login_id could both succeed.
+	data, err := s.rdb.GetDel(ctx, loginKey(loginID)).Bytes()
 	if errors.Is(err, goredis.Nil) {
 		return "", false, ErrAuthFailed
 	}
 	if err != nil {
 		return "", false, err
 	}
-	s.rdb.Del(ctx, loginKey(loginID)) // single-use
 
 	var ls loginState
 	if err := json.Unmarshal(data, &ls); err != nil {
