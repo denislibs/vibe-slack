@@ -36,3 +36,27 @@ type sessionResp struct {
 	UserID   string `json:"user_id"`
 	DeviceID string `json:"device_id"`
 }
+
+type enrollDeviceReq struct {
+	SigningPublicKey   string   `json:"signing_public_key"`
+	Label              string   `json:"label"`
+	InitialKeyPackages []string `json:"initial_key_packages"`
+}
+type enrollDeviceResp struct {
+	DeviceID string `json:"device_id"`
+}
+type deviceItem struct {
+	DeviceID string `json:"device_id"`
+	Label    string `json:"label"`
+	Status   string `json:"status"`
+}
+type keyPackageResp struct {
+	KeyPackage   string `json:"key_package"`
+	IsLastResort bool   `json:"is_last_resort"`
+}
+type countResp struct {
+	Available int `json:"available"`
+}
+type uploadKeyPackagesReq struct {
+	KeyPackages []string `json:"key_packages"`
+}
