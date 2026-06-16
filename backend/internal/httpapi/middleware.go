@@ -65,3 +65,20 @@ func sessionFrom(ctx context.Context) sessionWithToken {
 	v, _ := ctx.Value(sessionCtxKey).(sessionWithToken)
 	return v
 }
+
+func rateLimitMW(rl *session.RateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ip = r.RemoteAddr
+			}
+			ok, err := rl.Allow(r.Context(), "auth:"+ip)
+			if err == nil && !ok {
+				writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}

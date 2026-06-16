@@ -27,15 +27,16 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
+	rlmw := rateLimitMW(rl)
 
-	mux.HandleFunc("POST /auth/register/start", ah.registerStart)
+	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
+	mux.Handle("POST /auth/login/start", rlmw(http.HandlerFunc(ah.loginStart)))
 	mux.HandleFunc("POST /auth/register/finish", ah.registerFinish)
-	mux.HandleFunc("POST /auth/login/start", ah.loginStart)
 	mux.HandleFunc("POST /auth/login/finish", ah.loginFinish)
 
 	auth := authMW(sess)
