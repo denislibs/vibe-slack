@@ -58,6 +58,16 @@ impl Engine {
         Ok(())
     }
 
+    /// Add a member, returning the commit (for existing members) and welcome
+    /// (for the new member).
+    ///
+    /// DELIVERY CONTRACT: this merges the pending commit locally *before*
+    /// returning, so the group advances one epoch as soon as this call
+    /// succeeds (optimistic merge). The caller MUST reliably deliver the
+    /// returned `commit` to all existing members; if delivery fails, this
+    /// device will be one epoch ahead of peers with no rollback. A future
+    /// task may split the merge into a separate post-delivery confirmation
+    /// step; until then, treat successful delivery of `commit` as required.
     pub fn add_member(
         &mut self,
         group_id: &[u8],
