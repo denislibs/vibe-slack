@@ -57,9 +57,14 @@ pub fn deserialize_key_package(bytes: &[u8]) -> Result<KeyPackage, EngineError> 
     let kp_in = KeyPackageIn::tls_deserialize_exact(bytes)
         .map_err(EngineError::serde)?;
     // Validate against the protocol version + ciphersuite before use.
-    kp_in
+    let kp = kp_in
         .validate(OpenMlsRustCrypto::default().crypto(), ProtocolVersion::Mls10)
-        .map_err(EngineError::mls)
+        .map_err(EngineError::mls)?;
+    // Reject any key package not using our pinned ciphersuite.
+    if kp.ciphersuite() != crate::DEFAULT_CIPHERSUITE {
+        return Err(EngineError::mls("unexpected ciphersuite"));
+    }
+    Ok(kp)
 }
 
 #[cfg(test)]
@@ -81,5 +86,19 @@ mod tests {
         let parsed = deserialize_key_package(&bytes).unwrap();
         let reserialized = parsed.tls_serialize_detached().unwrap();
         assert_eq!(bytes, reserialized, "key package must round-trip byte-for-byte");
+    }
+
+    #[test]
+    fn rejects_malformed_key_package_bytes() {
+        // Garbage bytes must error cleanly, never panic.
+        let result = deserialize_key_package(&[0xde, 0xad, 0xbe, 0xef, 0x00, 0x01]);
+        assert!(result.is_err(), "malformed key package bytes must be rejected");
+
+        // Truncating a valid key package must also error.
+        let provider = OpenMlsRustCrypto::default();
+        let id = Identity::generate(&provider, b"alice@corp").unwrap();
+        let mut bytes = id.key_package_bytes(&provider).unwrap();
+        bytes.truncate(bytes.len() / 2);
+        assert!(deserialize_key_package(&bytes).is_err(), "truncated bytes must be rejected");
     }
 }
