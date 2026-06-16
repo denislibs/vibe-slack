@@ -108,6 +108,35 @@ impl Engine {
         })
     }
 
+    /// Remove a member by leaf index, returning the commit to fan out.
+    ///
+    /// DELIVERY CONTRACT: like `add_member`, this merges the pending commit
+    /// locally *before* returning (optimistic merge), so the group advances one
+    /// epoch as soon as this call succeeds. The caller MUST reliably deliver the
+    /// returned commit to all remaining members; if delivery fails, this device
+    /// will be one epoch ahead of its peers with no rollback.
+    pub fn remove_member(
+        &mut self,
+        group_id: &[u8],
+        leaf_index: u32,
+    ) -> Result<Vec<u8>, EngineError> {
+        let group = self
+            .groups
+            .get_mut(group_id)
+            .ok_or_else(|| EngineError::UnknownGroup(hex(group_id)))?;
+        let (commit, _welcome, _group_info) = group
+            .remove_members(
+                &self.provider,
+                &self.identity.signer,
+                &[LeafNodeIndex::new(leaf_index)],
+            )
+            .map_err(EngineError::mls)?;
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(EngineError::mls)?;
+        commit.tls_serialize_detached().map_err(EngineError::serde)
+    }
+
     pub fn join_from_welcome(&mut self, welcome_bytes: &[u8]) -> Result<(), EngineError> {
         let msg_in =
             MlsMessageIn::tls_deserialize_exact(welcome_bytes).map_err(EngineError::serde)?;
@@ -245,5 +274,58 @@ mod tests {
             Incoming::Application(pt) => assert_eq!(pt, b"hello bob"),
             other => panic!("expected application message, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn removed_member_cannot_read_new_epoch() {
+        let mut alice = Engine::new(b"alice@corp");
+        let mut bob = Engine::new(b"bob@corp");
+        let bob_kp = bob.key_package_bytes().unwrap();
+
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+        let add = alice.add_member(&group_id, &bob_kp).unwrap();
+        bob.join_from_welcome(&add.welcome).unwrap();
+
+        // Alice removes Bob (Bob is leaf index 1; Alice is 0).
+        let remove = alice.remove_member(&group_id, 1).unwrap();
+        // Bob processes the removal commit (he learns he is out; result ignored).
+        let _ = bob.process(&group_id, &remove);
+
+        // Alice sends a new-epoch message.
+        let ct = alice.encrypt(&group_id, b"secret after removal").unwrap();
+
+        // Bob must NOT be able to decrypt it.
+        let result = bob.process(&group_id, &ct);
+        assert!(result.is_err(), "removed member must not decrypt new-epoch messages");
+    }
+
+    #[test]
+    fn remaining_member_applies_membership_commit() {
+        let mut alice = Engine::new(b"alice@corp");
+        let mut bob = Engine::new(b"bob@corp");
+        let carol = Engine::new(b"carol@corp");
+
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+
+        // Add Bob first.
+        let add_bob = alice.add_member(&group_id, &bob.key_package_bytes().unwrap()).unwrap();
+        bob.join_from_welcome(&add_bob.welcome).unwrap();
+
+        // Now Alice adds Carol; Bob (existing member) must apply the commit.
+        let add_carol = alice.add_member(&group_id, &carol.key_package_bytes().unwrap()).unwrap();
+        let applied = bob.process(&group_id, &add_carol.commit).unwrap();
+        assert!(matches!(applied, Incoming::CommitApplied),
+            "existing member should apply the add-Carol commit, got {:?}", applied);
+    }
+
+    #[test]
+    fn process_rejects_malformed_bytes() {
+        let mut alice = Engine::new(b"alice@corp");
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+        let result = alice.process(&group_id, &[0xde, 0xad, 0xbe, 0xef]);
+        assert!(result.is_err(), "malformed inbound bytes must be rejected cleanly");
     }
 }
