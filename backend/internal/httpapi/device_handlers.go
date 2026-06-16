@@ -1,11 +1,13 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
 	"github.com/messenger/backend/internal/session"
+	"github.com/messenger/backend/internal/store"
 )
 
 type deviceHandlers struct {
@@ -66,8 +68,13 @@ func (h *deviceHandlers) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *deviceHandlers) revoke(w http.ResponseWriter, r *http.Request) {
+	swt := sessionFrom(r.Context())
 	id := r.PathValue("id")
-	if err := h.svc.Revoke(r.Context(), id); err != nil {
+	if err := h.svc.Revoke(r.Context(), swt.Session.UserID, id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "device not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal", "revoke failed")
 		return
 	}

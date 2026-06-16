@@ -55,24 +55,25 @@ func (r *DeviceRepo) ListByUser(ctx context.Context, userID string) ([]Device, e
 }
 
 // Revoke marks a device revoked and emits a kt_outbox event in the same tx.
-func (r *DeviceRepo) Revoke(ctx context.Context, deviceID string) error {
+// It is scoped to userID so a caller can only revoke their own devices.
+func (r *DeviceRepo) Revoke(ctx context.Context, userID, deviceID string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var userID string
+	var uid string
 	err = tx.QueryRow(ctx,
-		`UPDATE devices SET status='revoked', revoked_at=now() WHERE id=$1 RETURNING user_id`,
-		deviceID).Scan(&userID)
+		`UPDATE devices SET status='revoked', revoked_at=now() WHERE id=$1 AND user_id=$2 RETURNING user_id`,
+		deviceID, userID).Scan(&uid)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	if err := emitKTEvent(ctx, tx, userID, "device_revoked", map[string]string{"device_id": deviceID}); err != nil {
+	if err := emitKTEvent(ctx, tx, uid, "device_revoked", map[string]string{"device_id": deviceID}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

@@ -35,7 +35,8 @@ func (r *KeyPackageRepo) CountAvailable(ctx context.Context, deviceID string) (i
 	var n int
 	err := r.pool.QueryRow(ctx,
 		`SELECT count(*) FROM key_packages
-		 WHERE device_id=$1 AND consumed_at IS NULL AND is_last_resort=FALSE`, deviceID).Scan(&n)
+		 WHERE device_id=$1 AND consumed_at IS NULL AND is_last_resort=FALSE
+		 AND EXISTS (SELECT 1 FROM devices d WHERE d.id = key_packages.device_id AND d.status='active')`, deviceID).Scan(&n)
 	return n, err
 }
 
@@ -52,6 +53,7 @@ func (r *KeyPackageRepo) Consume(ctx context.Context, deviceID string) (pkg []by
 	err = tx.QueryRow(ctx,
 		`SELECT id, key_package FROM key_packages
 		 WHERE device_id=$1 AND consumed_at IS NULL AND is_last_resort=FALSE
+		 AND EXISTS (SELECT 1 FROM devices d WHERE d.id = key_packages.device_id AND d.status='active')
 		 ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1`, deviceID).Scan(&id, &pkg)
 	switch {
 	case err == nil:
@@ -65,7 +67,9 @@ func (r *KeyPackageRepo) Consume(ctx context.Context, deviceID string) (pkg []by
 	case errors.Is(err, pgx.ErrNoRows):
 		err = tx.QueryRow(ctx,
 			`SELECT key_package FROM key_packages
-			 WHERE device_id=$1 AND is_last_resort=TRUE LIMIT 1`, deviceID).Scan(&pkg)
+			 WHERE device_id=$1 AND is_last_resort=TRUE
+			 AND EXISTS (SELECT 1 FROM devices d WHERE d.id = key_packages.device_id AND d.status='active')
+			 LIMIT 1`, deviceID).Scan(&pkg)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, false, ErrNoKeyPackage
 		}

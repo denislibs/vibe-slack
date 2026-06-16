@@ -41,9 +41,18 @@ func main() {
 	}
 
 	dec := base64.StdEncoding.DecodeString
-	priv, _ := dec(cfg.OpaqueServerPrivateKey)
-	pub, _ := dec(cfg.OpaqueServerPublicKey)
-	seed, _ := dec(cfg.OpaqueOPRFSeed)
+	priv, err := dec(cfg.OpaqueServerPrivateKey)
+	if err != nil {
+		log.Fatalf("decode OPAQUE_SERVER_PRIVATE_KEY: %v", err)
+	}
+	pub, err := dec(cfg.OpaqueServerPublicKey)
+	if err != nil {
+		log.Fatalf("decode OPAQUE_SERVER_PUBLIC_KEY: %v", err)
+	}
+	seed, err := dec(cfg.OpaqueOPRFSeed)
+	if err != nil {
+		log.Fatalf("decode OPAQUE_OPRF_SEED: %v", err)
+	}
 	osrv, err := opaque.NewServer(priv, pub, seed, []byte("messenger-as"))
 	if err != nil {
 		log.Fatalf("opaque: %v", err)

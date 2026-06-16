@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -45,5 +46,27 @@ func TestKeyPackageUploadConsumeExhaustLastResort(t *testing.T) {
 	}
 	if !isLast || string(got) != "last-resort" {
 		t.Fatalf("expected last-resort package, got %q last=%v", got, isLast)
+	}
+}
+
+func TestConsumeRevokedDeviceReturnsNothing(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	users := NewUserRepo(pool)
+	devices := NewDeviceRepo(pool)
+	kp := NewKeyPackageRepo(pool)
+	u, _ := users.Create(ctx, "gail@corp", []byte("r"))
+	dev, _ := devices.Enroll(ctx, u.ID, []byte("pub"), "phone")
+	kp.Upload(ctx, dev.ID, [][]byte{[]byte("otk-1")}, false)
+	kp.Upload(ctx, dev.ID, [][]byte{[]byte("lr")}, true)
+
+	if err := devices.Revoke(ctx, u.ID, dev.ID); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	if n, _ := kp.CountAvailable(ctx, dev.ID); n != 0 {
+		t.Fatalf("revoked device must report 0 available, got %d", n)
+	}
+	if _, _, err := kp.Consume(ctx, dev.ID); !errors.Is(err, ErrNoKeyPackage) {
+		t.Fatalf("revoked device must serve no key package, got err %v", err)
 	}
 }

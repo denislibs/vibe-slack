@@ -12,6 +12,10 @@ type keypackageHandlers struct {
 
 func (h *keypackageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 	swt := sessionFrom(r.Context())
+	if swt.Session.DeviceID == "" {
+		writeError(w, http.StatusConflict, "no_device", "session is not bound to a device; enroll first")
+		return
+	}
 	var req uploadKeyPackagesReq
 	if !decodeJSON(w, r, &req) {
 		return
@@ -33,6 +37,10 @@ func (h *keypackageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 
 func (h *keypackageHandlers) count(w http.ResponseWriter, r *http.Request) {
 	swt := sessionFrom(r.Context())
+	if swt.Session.DeviceID == "" {
+		writeError(w, http.StatusConflict, "no_device", "session is not bound to a device; enroll first")
+		return
+	}
 	n, err := h.svc.Count(r.Context(), swt.Session.DeviceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal", "count failed")
