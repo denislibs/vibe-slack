@@ -14,6 +14,17 @@ pub struct AddResult {
     pub welcome: Vec<u8>,
 }
 
+/// The result of processing an inbound message.
+#[derive(Debug)]
+pub enum Incoming {
+    /// Decrypted application plaintext.
+    Application(Vec<u8>),
+    /// A membership/commit message was applied; group advanced one epoch.
+    CommitApplied,
+    /// A proposal was stored, pending a future commit.
+    ProposalStored,
+}
+
 /// One device's crypto engine. Owns this device's identity and group states.
 pub struct Engine {
     provider: OpenMlsRustCrypto,
@@ -118,6 +129,65 @@ impl Engine {
         self.groups.insert(gid, group);
         Ok(())
     }
+
+    pub fn encrypt(
+        &mut self,
+        group_id: &[u8],
+        plaintext: &[u8],
+    ) -> Result<Vec<u8>, EngineError> {
+        let group = self
+            .groups
+            .get_mut(group_id)
+            .ok_or_else(|| EngineError::UnknownGroup(hex(group_id)))?;
+        let out = group
+            .create_message(&self.provider, &self.identity.signer, plaintext)
+            .map_err(EngineError::mls)?;
+        out.tls_serialize_detached().map_err(EngineError::serde)
+    }
+
+    pub fn process(
+        &mut self,
+        group_id: &[u8],
+        message_bytes: &[u8],
+    ) -> Result<Incoming, EngineError> {
+        let group = self
+            .groups
+            .get_mut(group_id)
+            .ok_or_else(|| EngineError::UnknownGroup(hex(group_id)))?;
+
+        let msg_in = MlsMessageIn::tls_deserialize_exact(message_bytes)
+            .map_err(EngineError::serde)?;
+        let protocol_message = msg_in
+            .try_into_protocol_message()
+            .map_err(EngineError::mls)?;
+        let processed = group
+            .process_message(&self.provider, protocol_message)
+            .map_err(EngineError::mls)?;
+
+        match processed.into_content() {
+            ProcessedMessageContent::ApplicationMessage(app) => {
+                Ok(Incoming::Application(app.into_bytes()))
+            }
+            ProcessedMessageContent::StagedCommitMessage(staged) => {
+                group
+                    .merge_staged_commit(&self.provider, *staged)
+                    .map_err(EngineError::mls)?;
+                Ok(Incoming::CommitApplied)
+            }
+            ProcessedMessageContent::ProposalMessage(proposal) => {
+                group
+                    .store_pending_proposal(self.provider.storage(), *proposal)
+                    .map_err(EngineError::mls)?;
+                Ok(Incoming::ProposalStored)
+            }
+            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
+                group
+                    .store_pending_proposal(self.provider.storage(), *proposal)
+                    .map_err(EngineError::mls)?;
+                Ok(Incoming::ProposalStored)
+            }
+        }
+    }
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -144,5 +214,36 @@ mod tests {
 
         bob.join_from_welcome(&add.welcome).unwrap();
         assert!(bob.has_group(&group_id));
+    }
+
+    #[test]
+    fn alice_encrypts_application_message() {
+        let mut alice = Engine::new(b"alice@corp");
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+
+        let ct = alice.encrypt(&group_id, b"hello group").unwrap();
+        assert!(!ct.is_empty());
+        assert!(ct.windows(11).all(|w| w != b"hello group"));
+    }
+
+    #[test]
+    fn bob_decrypts_message_from_alice() {
+        let mut alice = Engine::new(b"alice@corp");
+        let mut bob = Engine::new(b"bob@corp");
+        let bob_kp = bob.key_package_bytes().unwrap();
+
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+        let add = alice.add_member(&group_id, &bob_kp).unwrap();
+        bob.join_from_welcome(&add.welcome).unwrap();
+
+        let ct = alice.encrypt(&group_id, b"hello bob").unwrap();
+        let decrypted = bob.process(&group_id, &ct).unwrap();
+
+        match decrypted {
+            Incoming::Application(pt) => assert_eq!(pt, b"hello bob"),
+            other => panic!("expected application message, got {:?}", other),
+        }
     }
 }
