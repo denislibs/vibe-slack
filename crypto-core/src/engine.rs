@@ -137,6 +137,31 @@ impl Engine {
         commit.tls_serialize_detached().map_err(EngineError::serde)
     }
 
+    /// Create a group and immediately add the org compliance member.
+    /// Returns the Welcome to deliver to the compliance device.
+    ///
+    /// The compliance member is a normal, VISIBLE MLS member: the server still
+    /// cannot read traffic, but an auditor holding the escrowed compliance key can
+    /// decrypt the archive, and the member appears in the group roster (no hidden
+    /// participant).
+    pub fn create_group_with_compliance(
+        &mut self,
+        group_id: &[u8],
+        compliance_key_package: &[u8],
+    ) -> Result<Vec<u8>, EngineError> {
+        self.create_group(group_id)?;
+        let add = self.add_member(group_id, compliance_key_package)?;
+        Ok(add.welcome)
+    }
+
+    pub fn member_count(&self, group_id: &[u8]) -> Result<usize, EngineError> {
+        let group = self
+            .groups
+            .get(group_id)
+            .ok_or_else(|| EngineError::UnknownGroup(hex(group_id)))?;
+        Ok(group.members().count())
+    }
+
     pub fn join_from_welcome(&mut self, welcome_bytes: &[u8]) -> Result<(), EngineError> {
         let msg_in =
             MlsMessageIn::tls_deserialize_exact(welcome_bytes).map_err(EngineError::serde)?;
@@ -341,6 +366,32 @@ mod tests {
         let applied = bob.process(&group_id, &add_carol.commit).unwrap();
         assert!(matches!(applied, Incoming::CommitApplied),
             "existing member should apply the add-Carol commit, got {:?}", applied);
+    }
+
+    #[test]
+    fn group_creation_injects_compliance_member() {
+        // The org's compliance device has its own engine/identity.
+        let mut compliance = Engine::new(b"compliance@corp");
+        let compliance_kp = compliance.key_package_bytes().unwrap();
+
+        let mut alice = Engine::new(b"alice@corp");
+        let group_id = b"team-1".to_vec();
+
+        // Creating with a compliance KeyPackage returns the Welcome for that member.
+        let welcome = alice
+            .create_group_with_compliance(&group_id, &compliance_kp)
+            .unwrap();
+
+        // The compliance device can join and decrypt subsequent traffic.
+        compliance.join_from_welcome(&welcome).unwrap();
+        let ct = alice.encrypt(&group_id, b"audited message").unwrap();
+        match compliance.process(&group_id, &ct).unwrap() {
+            Incoming::Application(pt) => assert_eq!(pt, b"audited message"),
+            other => panic!("expected application message, got {:?}", other),
+        }
+
+        // Membership is 2 (creator + compliance) — compliance is visible.
+        assert_eq!(alice.member_count(&group_id).unwrap(), 2);
     }
 
     #[test]
