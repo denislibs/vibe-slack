@@ -186,6 +186,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "thiserror",
  "tls_codec",
  "wasm-bindgen",
 ]

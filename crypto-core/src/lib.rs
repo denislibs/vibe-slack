@@ -1,5 +1,8 @@
 use openmls::prelude::Ciphersuite;
 
+pub mod errors;
+pub mod identity;
+
 pub const DEFAULT_CIPHERSUITE: Ciphersuite =
     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
