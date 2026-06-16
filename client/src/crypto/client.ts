@@ -44,6 +44,12 @@ export class CryptoClient {
   async createGroup(groupId: string): Promise<void> {
     await this.send({ kind: "createGroup", groupId });
   }
+  async createGroupWithCompliance(groupId: string, complianceKeyPackage: Uint8Array): Promise<Uint8Array> {
+    return (await this.send({ kind: "createGroupWithCompliance", groupId, complianceKeyPackage })) as Uint8Array;
+  }
+  async removeMember(groupId: string, leafIndex: number): Promise<Uint8Array> {
+    return (await this.send({ kind: "removeMember", groupId, leafIndex })) as Uint8Array;
+  }
   async addMember(groupId: string, keyPackage: Uint8Array) {
     return (await this.send({ kind: "addMember", groupId, keyPackage })) as {
       commit: Uint8Array;

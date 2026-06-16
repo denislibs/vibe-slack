@@ -84,6 +84,12 @@ impl WasmEngine {
         })
     }
 
+    pub fn remove_member(&mut self, group_id: &str, leaf_index: u32) -> Result<Vec<u8>, JsError> {
+        self.inner
+            .remove_member(group_id.as_bytes(), leaf_index)
+            .map_err(to_js)
+    }
+
     pub fn join_from_welcome(&mut self, welcome: Vec<u8>) -> Result<(), JsError> {
         self.inner.join_from_welcome(&welcome).map_err(to_js)
     }

@@ -168,6 +168,22 @@ export class WasmEngine {
         WasmEngineFinalization.register(this, this.__wbg_ptr, this);
         return this;
     }
+    /**
+     * @param {string} group_id
+     * @param {number} leaf_index
+     * @returns {Uint8Array}
+     */
+    remove_member(group_id, leaf_index) {
+        const ptr0 = passStringToWasm0(group_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmengine_remove_member(this.__wbg_ptr, ptr0, len0, leaf_index);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
 }
 if (Symbol.dispose) WasmEngine.prototype[Symbol.dispose] = WasmEngine.prototype.free;
 function __wbg_get_imports() {

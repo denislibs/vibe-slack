@@ -68,6 +68,9 @@ async function dispatchTo(
         result = { commit: r.commit, welcome: r.welcome };
         break;
       }
+      case "removeMember":
+        result = engine.remove_member(req.groupId, req.leafIndex);
+        break;
       case "joinFromWelcome":
         engine.join_from_welcome(req.welcome);
         result = null;

@@ -26,6 +26,7 @@ export class WasmEngine {
     join_from_welcome(welcome: Uint8Array): void;
     key_package_bytes(): Uint8Array;
     constructor(name: string);
+    remove_member(group_id: string, leaf_index: number): Uint8Array;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -44,6 +45,7 @@ export interface InitOutput {
     readonly wasmengine_join_from_welcome: (a: number, b: number, c: number) => [number, number];
     readonly wasmengine_key_package_bytes: (a: number) => [number, number, number, number];
     readonly wasmengine_new: (a: number, b: number) => number;
+    readonly wasmengine_remove_member: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
