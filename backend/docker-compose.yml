@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: as
+      POSTGRES_PASSWORD: as
+      POSTGRES_DB: as
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U as"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  backend:
+    build: .
+    depends_on: [postgres, redis]
+    environment:
+      DATABASE_URL: postgres://as:as@postgres:5432/as?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8080:8080"]
