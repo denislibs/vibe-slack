@@ -819,13 +819,49 @@ func (s *Server) LoginFinish(ke3Bytes []byte, st *LoginState) ([]byte, error) {
 // FakeRecord returns a deterministic fake registration record for an unknown
 // credential id, so login attempts on non-existent accounts are indistinguishable
 // from real ones (anti-enumeration).
+//
+// IMPORTANT (verified against bytemare/opaque v0.18.0): cfg.GetFakeRecord returns
+// a FRESH RANDOM record on every call and ignores credID for the record contents.
+// Returning it directly BREAKS anti-enumeration — two login attempts on the same
+// unknown identity would yield records that differ, letting an attacker distinguish
+// unknown accounts. Instead, take one correctly-sized fake record from the library
+// and deterministically overwrite ClientPublicKey / MaskingKey / Envelope with
+// values expanded from the SECRET server OPRF seed keyed by credID (HMAC-SHA512 with
+// a domain-separation tag). This yields a record that is correctly shaped for the
+// active config, stable per credID, and unforgeable offline (keyed by the secret seed).
+// GenerateKE2 on this fake record produces a KE2 byte-identical in length to a real
+// account's; login only fails later at LoginFinish (same as a wrong password).
 func (s *Server) FakeRecord(credID []byte) ([]byte, error) {
 	rec, err := s.cfg.GetFakeRecord(credID)
 	if err != nil {
 		return nil, err
 	}
-	return rec.RegistrationRecord.Serialize(), nil
+	rr := rec.RegistrationRecord
+	expand := func(label byte, n int) []byte {
+		dst := []byte("messenger-opaque-fake-record-v1")
+		out := make([]byte, 0, n)
+		var counter uint32
+		for len(out) < n {
+			mac := hmac.New(sha512.New, s.skm.OPRFGlobalSeed)
+			mac.Write(dst)
+			mac.Write([]byte{label})
+			var c [4]byte
+			binary.BigEndian.PutUint32(c[:], counter)
+			mac.Write(c[:])
+			mac.Write(credID)
+			out = mac.Sum(out)
+			counter++
+		}
+		return out[:n]
+	}
+	group := s.cfg.AKE.Group()
+	scalar := group.HashToScalar(expand(0x00, group.ScalarLength()), []byte("messenger-opaque-fake-record-v1"))
+	rr.ClientPublicKey = group.Base().Multiply(scalar)
+	rr.MaskingKey = expand(0x01, len(rr.MaskingKey))
+	rr.Envelope = expand(0x02, len(rr.Envelope))
+	return rr.Serialize(), nil
 }
+// (requires imports: crypto/hmac, crypto/sha512, encoding/binary)
 ```
 
 `backend/cmd/genkeys/main.go`:
