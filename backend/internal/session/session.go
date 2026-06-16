@@ -70,7 +70,10 @@ func (m *Manager) Validate(ctx context.Context, token string) (*Session, error) 
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, fmt.Errorf("corrupt session: %w", err)
 	}
-	m.rdb.Expire(ctx, sessionKey(token), m.ttl) // sliding expiry
+	// Sliding expiry. Also refresh the per-user index set so RevokeAll (ban /
+	// logout-all) can never miss a still-live token whose session outlived the set.
+	m.rdb.Expire(ctx, sessionKey(token), m.ttl)
+	m.rdb.Expire(ctx, userKey(s.UserID), m.ttl)
 	return &s, nil
 }
 
