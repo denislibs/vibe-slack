@@ -31,6 +31,7 @@ export const App: Component<{
   onSelect: (id: string) => void;
   onCreateChannel?: () => void;
   onNewDm?: () => void;
+  onAddPeople?: () => void;
 }> = (props) => (
   <Show
     when={props.session.status() !== "anonymous"}
@@ -64,6 +65,7 @@ export const App: Component<{
         onSelect={props.onSelect}
         onAddChannel={props.onCreateChannel}
         onNewDm={props.onNewDm}
+        onAddPeople={props.onAddPeople}
       />
     </Show>
   </Show>

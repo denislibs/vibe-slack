@@ -78,6 +78,15 @@ export function createOrchestrator(deps: OrchestratorDeps) {
         contentType: CONTENT_TYPE.app, ciphertext: bytesToB64(ct),
       });
     },
+    // Raw-send helpers for the add-member MLS handshake. The DS routes a commit to
+    // the group frame and the Welcome reaches the new device on its next sync via
+    // roster/join_seq, so deviceId is informational only and not sent on the wire.
+    sendCommit(group: string, bytes: Uint8Array) {
+      protocol.send({ clientMsgId: randomId(), groupId: group, contentType: CONTENT_TYPE.commit, ciphertext: bytesToB64(bytes) });
+    },
+    sendWelcome(group: string, _deviceId: string, bytes: Uint8Array) {
+      protocol.send({ clientMsgId: randomId(), groupId: group, contentType: CONTENT_TYPE.welcome, ciphertext: bytesToB64(bytes) });
+    },
   };
 }
 

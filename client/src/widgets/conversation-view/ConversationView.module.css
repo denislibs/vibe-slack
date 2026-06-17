@@ -19,6 +19,9 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+.actions {
+  margin-left: auto;
+}
 .body {
   flex: 1;
   overflow-y: auto;

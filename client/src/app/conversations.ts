@@ -7,6 +7,8 @@ export interface ConversationsControllerDeps {
   client: { list(token: string, wsId: string): Promise<{ group_id: string; type: string; visibility: string; name: string }[]> };
   create(args: { type: "dm" | "channel"; visibility?: "public" | "private"; name?: string; emailOrUsername?: string }): Promise<{ group_id: string; name: string; type: string }>;
   sendText(groupId: string, text: string): Promise<void> | void;
+  // KT-verified MLS add. Adapter is wired in bootstrap.
+  addMember(args: { wsId: string; group: string; identity: string; currentMaxSeq: number }): Promise<void>;
   conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
   token(): string;
   wsId(): string;
@@ -49,6 +51,15 @@ export function createConversationsController(deps: ConversationsControllerDeps)
       if (!id) return;
       deps.conversation.addMessage(id, { seq: echoSeq++, sender: deps.userLabel(), text });
       await deps.sendText(id, text);
+    },
+    // Add another workspace user to the active channel via the KT-verified MLS
+    // add use-case. currentMaxSeq=0 is intentional: by MLS forward-secrecy the new
+    // member can only decrypt messages from the epoch it joins onward, so it sees
+    // messages sent AFTER the join — never the pre-join history.
+    async addPeople(identity: string) {
+      const id = activeId();
+      if (!id) return;
+      await deps.addMember({ wsId: deps.wsId(), group: id, identity, currentMaxSeq: 0 });
     },
   };
 }
