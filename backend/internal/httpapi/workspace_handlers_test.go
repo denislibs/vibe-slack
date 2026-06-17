@@ -15,9 +15,12 @@ import (
 )
 
 type fakeWS struct {
-	createErr error
-	addErr    error
-	addResult *store.WorkspaceMember
+	createErr  error
+	addErr     error
+	addResult  *store.WorkspaceMember
+	searchErr  error
+	searchResp []store.WorkspaceMember
+	searchQ    string
 }
 
 func (f *fakeWS) Create(_ context.Context, owner, name string) (*store.Workspace, error) {
@@ -37,6 +40,13 @@ func (f *fakeWS) AddMember(context.Context, string, string, string) (*store.Work
 		return nil, f.addErr
 	}
 	return f.addResult, nil
+}
+func (f *fakeWS) SearchMembers(_ context.Context, _, _, q string) ([]store.WorkspaceMember, error) {
+	f.searchQ = q
+	if f.searchErr != nil {
+		return nil, f.searchErr
+	}
+	return f.searchResp, nil
 }
 func (f *fakeWS) SetRole(context.Context, string, string, string, string) error { return nil }
 func (f *fakeWS) RemoveMember(context.Context, string, string, string) error    { return nil }
@@ -82,6 +92,39 @@ func TestWorkspaceAddMemberMapping(t *testing.T) {
 		if rec.Code != c.want {
 			t.Fatalf("err %v → status %d, want %d", c.err, rec.Code, c.want)
 		}
+	}
+}
+
+func TestWorkspaceSearch(t *testing.T) {
+	f := &fakeWS{searchResp: []store.WorkspaceMember{
+		{UserID: "u1", Username: "alice", Email: "alice@corp", Role: "member"},
+	}}
+	h := &workspaceHandlers{svc: f}
+	req := withSession(httptest.NewRequest("GET", "/workspaces/w1/members/search?q=al", nil))
+	req.SetPathValue("id", "w1")
+	rec := httptest.NewRecorder()
+	h.search(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d, want 200", rec.Code)
+	}
+	if f.searchQ != "al" {
+		t.Fatalf("query passed through = %q, want %q", f.searchQ, "al")
+	}
+	var resp []wsMemberResp
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if len(resp) != 1 || resp[0].Username != "alice" || resp[0].UserID != "u1" {
+		t.Fatalf("resp %+v", resp)
+	}
+}
+
+func TestWorkspaceSearchNotMember(t *testing.T) {
+	h := &workspaceHandlers{svc: &fakeWS{searchErr: workspace.ErrNotMember}}
+	req := withSession(httptest.NewRequest("GET", "/workspaces/w1/members/search?q=al", nil))
+	req.SetPathValue("id", "w1")
+	rec := httptest.NewRecorder()
+	h.search(rec, req)
+	if rec.Code != 404 {
+		t.Fatalf("status %d, want 404", rec.Code)
 	}
 }
 

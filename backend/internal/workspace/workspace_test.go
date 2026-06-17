@@ -30,6 +30,9 @@ func (f *fakeRepo) ListForUser(context.Context, string) ([]store.WorkspaceWithRo
 	return nil, nil
 }
 func (f *fakeRepo) Members(context.Context, string) ([]store.WorkspaceMember, error) { return nil, nil }
+func (f *fakeRepo) SearchMembers(context.Context, string, string) ([]store.WorkspaceMember, error) {
+	return nil, nil
+}
 func (f *fakeRepo) RoleOf(_ context.Context, ws, u string) (string, error) {
 	if r, ok := f.roles[ws][u]; ok {
 		return r, nil

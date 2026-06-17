@@ -21,6 +21,7 @@ type Repo interface {
 	SlugExists(ctx context.Context, slug string) (bool, error)
 	ListForUser(ctx context.Context, userID string) ([]store.WorkspaceWithRole, error)
 	Members(ctx context.Context, workspaceID string) ([]store.WorkspaceMember, error)
+	SearchMembers(ctx context.Context, wsID, q string) ([]store.WorkspaceMember, error)
 	RoleOf(ctx context.Context, workspaceID, userID string) (string, error)
 	AddMember(ctx context.Context, workspaceID, userID, role string) error
 	RemoveMember(ctx context.Context, workspaceID, userID string) error
@@ -80,6 +81,13 @@ func (s *Service) Members(ctx context.Context, callerID, workspaceID string) ([]
 		return nil, err
 	}
 	return s.repo.Members(ctx, workspaceID)
+}
+
+func (s *Service) SearchMembers(ctx context.Context, callerID, wsID, q string) ([]store.WorkspaceMember, error) {
+	if _, err := s.requireRole(ctx, wsID, callerID); err != nil {
+		return nil, err
+	}
+	return s.repo.SearchMembers(ctx, wsID, q)
 }
 
 func (s *Service) AddMember(ctx context.Context, callerID, workspaceID, emailOrUsername string) (*store.WorkspaceMember, error) {

@@ -108,6 +108,32 @@ func (r *WorkspaceRepo) Members(ctx context.Context, workspaceID string) ([]Work
 	return out, rows.Err()
 }
 
+// SearchMembers returns workspace members whose username or email starts with q
+// (prefix, case-insensitive). Empty q returns no rows.
+func (r *WorkspaceRepo) SearchMembers(ctx context.Context, wsID, q string) ([]WorkspaceMember, error) {
+	if q == "" {
+		return []WorkspaceMember{}, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT u.id, u.username, u.email, m.role
+		   FROM workspace_members m JOIN users u ON u.id = m.user_id
+		  WHERE m.workspace_id=$1 AND (u.username ILIKE $2 OR u.email ILIKE $2)
+		  ORDER BY u.username LIMIT 20`, wsID, q+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []WorkspaceMember
+	for rows.Next() {
+		var m WorkspaceMember
+		if err := rows.Scan(&m.UserID, &m.Username, &m.Email, &m.Role); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 func (r *WorkspaceRepo) RoleOf(ctx context.Context, workspaceID, userID string) (string, error) {
 	var role string
 	err := r.pool.QueryRow(ctx,

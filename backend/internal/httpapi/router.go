@@ -75,6 +75,7 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("POST /workspaces", auth(http.HandlerFunc(wh.create)))
 	mux.Handle("GET /workspaces", auth(http.HandlerFunc(wh.list)))
 	mux.Handle("GET /workspaces/{id}/members", auth(http.HandlerFunc(wh.members)))
+	mux.Handle("GET /workspaces/{id}/members/search", auth(http.HandlerFunc(wh.search)))
 	mux.Handle("POST /workspaces/{id}/members", auth(http.HandlerFunc(wh.addMember)))
 	mux.Handle("PATCH /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.setRole)))
 	mux.Handle("DELETE /workspaces/{id}/members/me", auth(http.HandlerFunc(wh.leave)))
