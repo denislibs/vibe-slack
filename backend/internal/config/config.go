@@ -22,6 +22,10 @@ type Config struct {
 	// ComplianceDeviceID, if set, designates a device whose KeyPackages back
 	// the compliance KeyPackage endpoint. Optional; empty disables it.
 	ComplianceDeviceID string
+
+	// CookieSecure gates the Secure attribute on the session cookie.
+	// Dev over http = false; prod = true.
+	CookieSecure bool
 }
 
 func Load() (*Config, error) {
@@ -34,6 +38,7 @@ func Load() (*Config, error) {
 		OpaqueOPRFSeed:         os.Getenv("OPAQUE_OPRF_SEED"),
 		KTSigningKey:           os.Getenv("KT_SIGNING_KEY"),
 		ComplianceDeviceID:     os.Getenv("COMPLIANCE_DEVICE_ID"),
+		CookieSecure:           getenvBool("COOKIE_SECURE", true),
 	}
 	for k, v := range map[string]string{
 		"DATABASE_URL":              c.DatabaseURL,
@@ -55,4 +60,12 @@ func getenv(k, def string) string {
 		return v
 	}
 	return def
+}
+
+func getenvBool(k string, def bool) bool {
+	v := os.Getenv(k)
+	if v == "" {
+		return def
+	}
+	return v != "false" && v != "0"
 }

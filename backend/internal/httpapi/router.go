@@ -15,9 +15,9 @@ import (
 )
 
 // NewRouter wires the auth endpoints. Device/keypackage routes are added later.
-func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
+func NewRouter(svc *as.Service, sess *session.Manager, cookieSecure bool) http.Handler {
 	mux := http.NewServeMux()
-	ah := &authHandlers{svc: svc, sess: sess}
+	ah := &authHandlers{svc: svc, sess: sess, cookieSecure: cookieSecure}
 
 	mux.HandleFunc("POST /auth/register/start", ah.registerStart)
 	mux.HandleFunc("POST /auth/register/finish", ah.registerFinish)
@@ -32,9 +32,9 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service, userRepo *store.UserRepo, deviceRepo *store.DeviceRepo, wsRepo *store.WorkspaceRepo, convRepo *store.ConvRepo, complianceDeviceID string) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, cookieSecure bool, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service, userRepo *store.UserRepo, deviceRepo *store.DeviceRepo, wsRepo *store.WorkspaceRepo, convRepo *store.ConvRepo, complianceDeviceID string) http.Handler {
 	mux := http.NewServeMux()
-	ah := &authHandlers{svc: svc, sess: sess}
+	ah := &authHandlers{svc: svc, sess: sess, cookieSecure: cookieSecure}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
 	rh := &rosterHandlers{roster: rosterRepo, members: convSvc}

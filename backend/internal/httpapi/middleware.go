@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/messenger/backend/internal/session"
 )
@@ -13,6 +14,22 @@ import (
 type ctxKey string
 
 const sessionCtxKey ctxKey = "session"
+
+const sessionCookie = "session"
+
+func setSessionCookie(w http.ResponseWriter, token string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: token, Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: http.SameSiteStrictMode, MaxAge: int((24 * time.Hour) / time.Second),
+	})
+}
+
+func clearSessionCookie(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: "", Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: http.SameSiteStrictMode, MaxAge: -1,
+	})
+}
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
