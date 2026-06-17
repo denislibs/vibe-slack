@@ -7,17 +7,25 @@
 }
 .header {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  align-items: center;
+  gap: var(--space-2);
+  height: 49px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
+  flex: none;
 }
 .title {
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
 }
 .status {
   color: var(--text-muted);
   font-size: 13px;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--hover-row);
+  line-height: 1.6;
 }
 .actions {
   margin-left: auto;
@@ -25,7 +33,8 @@
 .body {
   flex: 1;
   overflow-y: auto;
+  padding-bottom: var(--space-2);
 }
 .footer {
-  padding: var(--space-3) var(--space-4);
+  flex: none;
 }

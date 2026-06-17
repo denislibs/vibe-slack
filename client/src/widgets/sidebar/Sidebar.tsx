@@ -18,38 +18,63 @@ export const Sidebar: Component<{
   const rowClass = (id: string) => `${s.row} ${id === props.activeId ? s.active : ""}`;
   return (
     <aside class={s.sidebar}>
-      <div class={s.header}>{props.workspaceName}</div>
+      <div class={s.header}>
+        <span class={s.headerName}>{props.workspaceName}</span>
+        <span class={s.headerCaret} aria-hidden="true">
+          ▾
+        </span>
+      </div>
 
       <div class={s.section}>
-        <div class={s.label}>Channels</div>
+        <div class={s.label}>
+          <span class={s.labelCaret} aria-hidden="true">
+            ▾
+          </span>
+          Channels
+        </div>
         <Show
           when={props.channels.length > 0}
-          fallback={<div class={s.muted}>No channels yet</div>}
+          fallback={<div class={s.empty}>No channels yet</div>}
         >
           <For each={props.channels}>
             {(c) => (
               <div class={rowClass(c.id)} onClick={() => props.onSelect(c.id)}>
-                {c.visibility === "private" ? "🔒" : "#"} {c.name}
+                <span class={s.glyph} aria-hidden="true">
+                  {c.visibility === "private" ? "🔒" : "#"}
+                </span>
+                {c.name}
               </div>
             )}
           </For>
         </Show>
-        <div class={`${s.row} ${s.muted}`} onClick={() => props.onAddChannel?.()}>
-          + Add channels
+        <div class={`${s.row} ${s.addRow}`} onClick={() => props.onAddChannel?.()}>
+          <span class={s.plus} aria-hidden="true">
+            +
+          </span>
+          Add channels
         </div>
       </div>
 
       <div class={s.section}>
-        <div class={s.label}>Direct messages</div>
+        <div class={s.label}>
+          <span class={s.labelCaret} aria-hidden="true">
+            ▾
+          </span>
+          Direct messages
+        </div>
         <For each={props.dms}>
           {(d) => (
             <div class={`${rowClass(d.id)} ${s.dmRow}`} onClick={() => props.onSelect(d.id)}>
-              <Avatar name={d.name} size={20} /> {d.name}
+              <Avatar name={d.name} size={20} />
+              {d.name}
             </div>
           )}
         </For>
-        <div class={`${s.row} ${s.muted}`} onClick={() => props.onNewDm?.()}>
-          + New message
+        <div class={`${s.row} ${s.addRow}`} onClick={() => props.onNewDm?.()}>
+          <span class={s.plus} aria-hidden="true">
+            +
+          </span>
+          New message
         </div>
       </div>
     </aside>

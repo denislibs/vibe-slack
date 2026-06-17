@@ -26,7 +26,7 @@ export const ConversationView: Component<{
       </Show>
     </header>
     <div class={s.body}>
-      <MessageList messages={props.messages} />
+      <MessageList messages={props.messages} title={props.title} />
     </div>
     <footer class={s.footer}>
       <Composer onSend={props.onSend} />

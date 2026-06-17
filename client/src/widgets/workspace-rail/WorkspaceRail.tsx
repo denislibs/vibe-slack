@@ -11,11 +11,27 @@ export const WorkspaceRail: Component<{
   onCreateWorkspace?: () => void;
 }> = (props) => (
   <nav class={s.rail}>
-    <Avatar name={props.workspaceName} size={40} />
+    <button type="button" class={`${s.workspaceBtn} ${s.activeWorkspace}`} aria-label={props.workspaceName}>
+      <Avatar name={props.workspaceName} size={40} />
+    </button>
+
     <IconButton label="Create workspace" onClick={() => props.onCreateWorkspace?.()}>
       +
     </IconButton>
+
+    <IconButton label="Home">
+      <span class={s.navGlyph} aria-hidden="true">
+        🏠
+      </span>
+    </IconButton>
+    <IconButton label="Direct messages">
+      <span class={s.navGlyph} aria-hidden="true">
+        ✉
+      </span>
+    </IconButton>
+
     <div class={s.spacer} />
+
     <IconButton label="Toggle theme" onClick={() => props.onToggleTheme()}>
       {props.theme === "dark" ? "☀" : "☾"}
     </IconButton>
