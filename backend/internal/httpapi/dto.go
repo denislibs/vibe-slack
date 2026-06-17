@@ -64,3 +64,16 @@ type addMemberReq struct {
 	DeviceID string `json:"device_id"`
 	JoinSeq  int64  `json:"join_seq"`
 }
+
+type sthResp struct {
+	TreeSize  int64  `json:"tree_size"`
+	RootHash  string `json:"root_hash"`
+	Signature string `json:"signature"`
+}
+type ktKeyResp struct {
+	LeafIndex int64    `json:"leaf_index"`
+	Version   int64    `json:"version"`
+	DeviceSet string   `json:"device_set"`
+	AuditPath []string `json:"audit_path"`
+	STH       sthResp  `json:"sth"`
+}

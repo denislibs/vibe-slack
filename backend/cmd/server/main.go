@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"log"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/messenger/backend/internal/httpapi"
 	"github.com/messenger/backend/internal/hub"
 	"github.com/messenger/backend/internal/keypackages"
+	"github.com/messenger/backend/internal/kt"
 	"github.com/messenger/backend/internal/opaque"
 	"github.com/messenger/backend/internal/platform/postgres"
 	"github.com/messenger/backend/internal/platform/redis"
@@ -83,7 +85,10 @@ func main() {
 	}
 	gw := ws.NewGateway(sess, deliverySvc, hubReg, fan, nodeID)
 
-	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo)
+	// TODO(Task 9): wire the real relay + KT signing key (public key) from cfg.
+	ktSvc := kt.NewService(store.NewKTRepo(pool))
+	var ktPub ed25519.PublicKey
+	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub)
 	root := http.NewServeMux()
 	root.Handle("/", apiHandler)
 	root.HandleFunc("/ws", gw.Handle)

@@ -1,11 +1,13 @@
 package httpapi
 
 import (
+	"crypto/ed25519"
 	"net/http"
 
 	"github.com/messenger/backend/internal/as"
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
+	"github.com/messenger/backend/internal/kt"
 	"github.com/messenger/backend/internal/session"
 	"github.com/messenger/backend/internal/store"
 )
@@ -28,12 +30,13 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
 	rh := &rosterHandlers{roster: rosterRepo}
+	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -58,6 +61,12 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	// deliberately out of scope per the spec; auth provides the baseline check.
 	mux.Handle("POST /conversations/{group}/members", auth(http.HandlerFunc(rh.addMember)))
 	mux.Handle("DELETE /conversations/{group}/members/{device}", auth(http.HandlerFunc(rh.removeMember)))
+
+	mux.Handle("GET /kt/pubkey", auth(http.HandlerFunc(kth.pubkey)))
+	mux.Handle("GET /kt/sth", auth(http.HandlerFunc(kth.sth)))
+	mux.Handle("GET /kt/key/{identity}", auth(http.HandlerFunc(kth.key)))
+	mux.Handle("GET /kt/proof/inclusion", auth(http.HandlerFunc(kth.inclusion)))
+	mux.Handle("GET /kt/proof/consistency", auth(http.HandlerFunc(kth.consistency)))
 
 	return recoverMW(mux)
 }
