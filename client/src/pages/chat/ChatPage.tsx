@@ -24,11 +24,14 @@ export const ChatPage: Component<{
   onSelect: (id: string) => void;
   onAddChannel?: () => void;
   onNewDm?: () => void;
+  onAddPeople?: () => void;
 }> = (props) => {
   const title = () =>
     props.channels.find((c) => c.id === props.activeId)?.name ??
     props.dms.find((d) => d.id === props.activeId)?.name ??
     "Messenger";
+  // Only channels can have people added; DMs are a fixed two-person membership.
+  const isChannel = () => props.channels.some((c) => c.id === props.activeId);
   return (
     <div class={s.shell}>
       <Topbar workspaceName={props.workspaceName} />
@@ -53,6 +56,8 @@ export const ChatPage: Component<{
           status={props.status}
           messages={props.messages}
           onSend={props.onSend}
+          canAddPeople={isChannel()}
+          onAddPeople={props.onAddPeople}
         />
       </div>
     </div>

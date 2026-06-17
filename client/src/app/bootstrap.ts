@@ -16,6 +16,9 @@ import { WorkspaceClient } from "../shared/api/workspace";
 import { ConversationsClient } from "../shared/api/conversations";
 import { createConversationsController } from "./conversations";
 import { createConversation } from "../features/create-conversation/createConversation";
+import { addMember } from "../features/add-member/addMember";
+import { KTVerifier } from "../shared/lib/kt/client";
+import { KTClient } from "../shared/api/kt";
 import { DS_HTTP_URL } from "../shared/config/env";
 import wasmUrl from "../shared/lib/auth/opaque-wasm/opaque.wasm?url";
 import wasmExecUrl from "../shared/lib/auth/opaque-wasm/wasm_exec.js?url";
@@ -115,6 +118,7 @@ export function bootstrap(deviceName: string) {
   // attributed correctly.
   const [userLabel, setUserLabel] = createSignal("you");
   const convClient = new ConversationsClient(DS_HTTP_URL);
+  const ktVerifier = new KTVerifier(new KTClient(DS_HTTP_URL));
   const conversations = createConversationsController({
     client: convClient,
     create: (args) =>
@@ -133,6 +137,31 @@ export function bootstrap(deviceName: string) {
         { wsId: workspace.current() ?? "", ...args },
       ),
     sendText: (g, t) => orchestrator.sendText(g, t),
+    // KT-verified MLS add. ConversationsClient's method signatures are token-first
+    // positional, matching ConversationsPort's arg order — so no token-injecting
+    // adapter is needed. The only mismatch is the return shape: addDeviceToRoster
+    // and putGroupInfo resolve `{ ok: true }` but the port wants `Promise<void>`,
+    // so those two are wrapped to drop the body (same pattern as createConversation
+    // above). CryptoClient.addMember already resolves a plain { commit, welcome }.
+    addMember: (args) =>
+      addMember(
+        {
+          conversations: {
+            addUser: (t, g, id) => convClient.addUser(t, g, id),
+            keyMaterial: (t, ws, id) => convClient.keyMaterial(t, ws, id),
+            addDeviceToRoster: async (t, g, d, seq) => { await convClient.addDeviceToRoster(t, g, d, seq); },
+            putGroupInfo: async (t, g, bytes) => { await convClient.putGroupInfo(t, g, bytes); },
+          },
+          crypto: {
+            addMember: (g, kp) => cryptoClient.addMember(g, kp),
+            exportGroupInfo: (g) => cryptoClient.exportGroupInfo(g),
+          },
+          kt: { verifyIdentity: (t, id) => ktVerifier.verifyIdentity(t, id) },
+          protocol: { sendCommit: orchestrator.sendCommit, sendWelcome: orchestrator.sendWelcome },
+          token: () => session.token() ?? "",
+        },
+        args,
+      ),
     conversation,
     token: () => session.token() ?? "",
     wsId: () => workspace.current() ?? "",

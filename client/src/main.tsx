@@ -19,6 +19,7 @@ if (root) {
   const [userEmail, setUserEmail] = createSignal("");
   const [createChannelOpen, setCreateChannelOpen] = createSignal(false);
   const [newDmOpen, setNewDmOpen] = createSignal(false);
+  const [addPeopleOpen, setAddPeopleOpen] = createSignal(false);
   const [dmResults, setDmResults] = createSignal<{ user_id: string; username: string; email: string }[]>([]);
   const runQuery = async (q: string) => {
     const r = await wsClient.searchMembers(session.token() ?? "", workspace.current() ?? "", q);
@@ -28,6 +29,19 @@ if (root) {
     setBusy(true); setAuthError("");
     try { await fn(); } catch { setAuthError("invalid email or password"); }
     finally { setBusy(false); }
+  };
+  // Add the picked user to the active channel. A KT failure (UnverifiedDevice or
+  // any KTError) fails closed — surface it and keep the modal context intact.
+  const addPeople = async (username: string) => {
+    setBusy(true); setAuthError("");
+    try {
+      await conversations.addPeople(username);
+      setAddPeopleOpen(false);
+    } catch (e) {
+      setAuthError(e instanceof Error && e.name === "UnverifiedDevice"
+        ? "cannot add user: device not KT-verified"
+        : "failed to add user");
+    } finally { setBusy(false); }
   };
   render(() => (
     <>
@@ -58,6 +72,7 @@ if (root) {
         onSelect={(id) => conversations.select(id)}
         onCreateChannel={() => setCreateChannelOpen(true)}
         onNewDm={() => setNewDmOpen(true)}
+        onAddPeople={() => { setDmResults([]); setAddPeopleOpen(true); }}
       />
       <CreateChannelModal
         open={createChannelOpen()}
@@ -70,6 +85,13 @@ if (root) {
         results={dmResults()}
         onQuery={(q) => void runQuery(q)}
         onPick={(u) => { void conversations.startDm(u); setNewDmOpen(false); }}
+      />
+      <NewDmModal
+        open={addPeopleOpen()}
+        onClose={() => setAddPeopleOpen(false)}
+        results={dmResults()}
+        onQuery={(q) => void runQuery(q)}
+        onPick={(u) => void addPeople(u)}
       />
     </>
   ), root);

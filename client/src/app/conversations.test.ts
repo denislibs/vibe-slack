@@ -7,6 +7,7 @@ function deps(list: any[] = []) {
     client: { list: vi.fn(async () => list) },
     create: vi.fn(async (args: any) => ({ group_id: "gNEW", name: args.name ?? "dm", type: args.type })),
     sendText: vi.fn(),
+    addMember: vi.fn(async () => {}),
     conversation: { addMessage: vi.fn((g: string, m: any) => added.push([g, m])) },
     token: () => "TOK",
     wsId: () => "w1",
@@ -67,5 +68,20 @@ describe("conversations controller", () => {
     await c.send("hi");
     expect(d.sendText).not.toHaveBeenCalled();
     expect(d.conversation.addMessage).not.toHaveBeenCalled();
+  });
+
+  it("addPeople calls addMember dep for the active channel (currentMaxSeq=0)", async () => {
+    const d = deps();
+    const c = createConversationsController(d as any);
+    c.select("c1");
+    await c.addPeople("bob");
+    expect(d.addMember).toHaveBeenCalledWith({ wsId: "w1", group: "c1", identity: "bob", currentMaxSeq: 0 });
+  });
+
+  it("addPeople with no active conversation is a no-op", async () => {
+    const d = deps();
+    const c = createConversationsController(d as any);
+    await c.addPeople("bob");
+    expect(d.addMember).not.toHaveBeenCalled();
   });
 });
