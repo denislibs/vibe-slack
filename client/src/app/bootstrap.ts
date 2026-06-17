@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { CryptoClient } from "../shared/lib/crypto/client";
 import { ProtocolClient } from "../shared/lib/transport/protocolClient";
 import { createConversationStore } from "../entities/conversation/store";
@@ -12,6 +13,9 @@ import { createSessionStore } from "../entities/session/store";
 import { createWorkspaceStore } from "../entities/workspace/store";
 import { createWorkspaces } from "../features/workspaces/workspaces";
 import { WorkspaceClient } from "../shared/api/workspace";
+import { ConversationsClient } from "../shared/api/conversations";
+import { createConversationsController } from "./conversations";
+import { createConversation } from "../features/create-conversation/createConversation";
 import { DS_HTTP_URL } from "../shared/config/env";
 import wasmUrl from "../shared/lib/auth/opaque-wasm/opaque.wasm?url";
 import wasmExecUrl from "../shared/lib/auth/opaque-wasm/wasm_exec.js?url";
@@ -105,5 +109,35 @@ export function bootstrap(deviceName: string) {
     token: () => session.token() ?? "",
   });
 
-  return { orchestrator, conversation, connection, session, workspace, workspaces, authFlow };
+  // Conversations controller. The logged-in user's label (email) is not known at
+  // bootstrap time; main sets it after login via `setUserLabel`. The controller
+  // reads it lazily through the `userLabel` getter so the optimistic echo is
+  // attributed correctly.
+  const [userLabel, setUserLabel] = createSignal("you");
+  const convClient = new ConversationsClient(DS_HTTP_URL);
+  const conversations = createConversationsController({
+    client: convClient,
+    create: (args) =>
+      createConversation(
+        {
+          // Adapter: ConversationsClient.putGroupInfo resolves `{ok:true}` but the
+          // feature dep wants `Promise<void>`; drop the body to satisfy the shape.
+          conversations: {
+            create: (t, ws, body) => convClient.create(t, ws, body),
+            complianceKeyPackage: (t) => convClient.complianceKeyPackage(t),
+            putGroupInfo: async (t, g, bytes) => { await convClient.putGroupInfo(t, g, bytes); },
+          },
+          crypto: cryptoClient,
+          token: () => session.token() ?? "",
+        },
+        { wsId: workspace.current() ?? "", ...args },
+      ),
+    sendText: (g, t) => orchestrator.sendText(g, t),
+    conversation,
+    token: () => session.token() ?? "",
+    wsId: () => workspace.current() ?? "",
+    userLabel: () => userLabel(),
+  });
+
+  return { orchestrator, conversation, connection, session, workspace, workspaces, authFlow, conversations, setUserLabel };
 }
