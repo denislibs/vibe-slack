@@ -1,2 +1,11 @@
 export { Button } from "./Button";
+export type { ButtonProps, ButtonVariant } from "./Button";
+export { IconButton } from "./IconButton";
+export type { IconButtonProps } from "./IconButton";
+export { Input } from "./Input";
+export type { InputProps } from "./Input";
+export { Avatar, colorForName } from "./Avatar";
+export type { AvatarProps } from "./Avatar";
+export { Modal } from "./Modal";
+export type { ModalProps } from "./Modal";
 export { Spinner } from "./Spinner";

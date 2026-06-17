@@ -1,10 +1,17 @@
+import "./styles/theme.css";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { App } from "./app/App";
 import { bootstrap } from "./app/bootstrap";
+import { createThemeStore } from "./entities/theme/store";
+
+// Construct early so the default `data-theme` is applied to <html> before render.
+// (UI-2 will wire the toggle into the UI; for now we just establish the attribute.)
+const theme = createThemeStore();
 
 const root = document.getElementById("root");
 if (root) {
+  void theme;
   const { orchestrator, conversation, connection, session, workspace, workspaces, authFlow } = bootstrap("device");
   const [authError, setAuthError] = createSignal("");
   const [busy, setBusy] = createSignal(false);
