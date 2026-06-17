@@ -18,12 +18,19 @@ export const ConversationView: Component<{
   <section class={s.view}>
     <header class={s.header}>
       <span class={s.title}># {props.title}</span>
-      <span class={s.status} data-testid="status">{props.status}</span>
-      <Show when={props.canAddPeople}>
-        <span class={s.actions}>
-          <Button variant="ghost" onClick={() => props.onAddPeople?.()}>Add people</Button>
+      <span class={s.statusLabel}>
+        <span class={s.status} data-testid="status">{props.status}</span>
+      </span>
+      <span class={s.right}>
+        <span class={s.memberChip} aria-hidden="true">
+          👤 1
         </span>
-      </Show>
+        <Show when={props.canAddPeople}>
+          <span class={s.actions}>
+            <Button variant="ghost" onClick={() => props.onAddPeople?.()}>Add people</Button>
+          </span>
+        </Show>
+      </span>
     </header>
     <div class={s.body}>
       <MessageList messages={props.messages} title={props.title} />

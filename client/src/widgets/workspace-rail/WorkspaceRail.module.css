@@ -4,32 +4,64 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
+  padding: 10px 0;
   gap: 8px;
   height: 100%;
 }
 
+/* Workspace switcher tile (wraps a 36px Avatar) */
 .workspaceBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   background: transparent;
-  border-radius: var(--radius);
+  border-radius: 10px;
   cursor: pointer;
+  overflow: hidden;
+}
+.workspaceBtn > div {
+  border-radius: 10px;
 }
 .activeWorkspace {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
-  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Global action icon buttons (rendered by the shared IconButton).
+   IconButton is used only here, so scoping to .rail is safe. */
+.rail button {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--sidebar-muted);
+}
+.rail button.workspaceBtn {
+  color: inherit;
+}
+.rail button:not(.workspaceBtn) {
+  font-size: 18px;
+  line-height: 1;
+}
+.rail button:not(.workspaceBtn):hover {
+  color: #fff;
+  background: var(--sidebar-hover);
 }
 
 .navGlyph {
   font-size: 18px;
   line-height: 1;
-  opacity: 0.75;
 }
 
 .spacer {
   margin-top: auto;
+}
+
+.userAvatar {
+  display: inline-flex;
+}
+.userAvatar > div {
+  border-radius: 8px;
 }
