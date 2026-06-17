@@ -1,5 +1,6 @@
 import type { Component } from "solid-js";
 import { LoginForm } from "../../widgets/login-form/LoginForm";
+import s from "./AuthPage.module.css";
 
 export const AuthPage: Component<{
   onLogin: (email: string, password: string) => void;
@@ -7,8 +8,11 @@ export const AuthPage: Component<{
   error: string;
   busy: boolean;
 }> = (props) => (
-  <div>
-    <h1>Sign in</h1>
-    <LoginForm onLogin={props.onLogin} onRegister={props.onRegister} error={props.error} busy={props.busy} />
+  <div class={s.page}>
+    <div class={s.card}>
+      <p class={s.mark}>Messenger</p>
+      <h1 class={s.title}>Sign in</h1>
+      <LoginForm onLogin={props.onLogin} onRegister={props.onRegister} error={props.error} busy={props.busy} />
+    </div>
   </div>
 );
