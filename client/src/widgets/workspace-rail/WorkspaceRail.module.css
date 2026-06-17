@@ -1,0 +1,13 @@
+.rail {
+  width: 64px;
+  background: var(--rail-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  height: 100%;
+}
+.spacer {
+  margin-top: auto;
+}

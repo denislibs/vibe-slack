@@ -1,5 +1,6 @@
 import { createSignal, type Component } from "solid-js";
 import { Button } from "../../shared/ui";
+import s from "./Composer.module.css";
 
 export const Composer: Component<{ onSend: (text: string) => void }> = (props) => {
   const [text, setText] = createSignal("");
@@ -10,9 +11,21 @@ export const Composer: Component<{ onSend: (text: string) => void }> = (props) =
     setText("");
   };
   return (
-    <div>
-      <input type="text" value={text()} onInput={(e) => setText(e.currentTarget.value)} />
-      <Button onClick={submit}>Send</Button>
+    <div class={s.composer}>
+      <input
+        class={s.input}
+        type="text"
+        value={text()}
+        placeholder="Message"
+        onInput={(e) => setText(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <Button variant="primary" onClick={submit}>Send</Button>
     </div>
   );
 };

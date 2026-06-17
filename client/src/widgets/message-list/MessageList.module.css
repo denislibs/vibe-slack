@@ -1,0 +1,29 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) 0;
+}
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4);
+}
+.row:hover {
+  background: var(--sidebar-hover);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sender {
+  color: var(--text);
+}
+.text {
+  color: var(--text);
+}
+.empty {
+  color: var(--text-muted);
+  padding: var(--space-4);
+}

@@ -1,0 +1,10 @@
+.shell {
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  height: 100vh;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 64px 260px 1fr;
+  min-height: 0;
+}
