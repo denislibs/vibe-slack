@@ -1,7 +1,16 @@
 import { render } from "solid-js/web";
 import { App } from "./app/App";
+import { bootstrap } from "./app/bootstrap";
 
 const root = document.getElementById("root");
 if (root) {
-  render(() => <App />, root);
+  const { orchestrator, conversation, connection } = bootstrap("device");
+  render(() => (
+    <App
+      groupId="g1"
+      conversation={conversation}
+      connection={connection}
+      onSend={(text) => orchestrator.sendText("g1", text)}
+    />
+  ), root);
 }
