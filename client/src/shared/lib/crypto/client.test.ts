@@ -12,6 +12,9 @@ class FakeWorker {
       case "keyPackage":
         res = ok(new Uint8Array([9, 9]));
         break;
+      case "signingPublicKey":
+        res = ok(new Uint8Array(Array.from({ length: 32 }, (_, i) => i + 1)));
+        break;
       case "createGroupWithCompliance":
         res = ok(new Uint8Array([1, 2, 3]));
         break;
@@ -31,6 +34,13 @@ describe("CryptoClient", () => {
     const client = new CryptoClient(new FakeWorker() as unknown as Worker, "alice@corp");
     const kp = await client.keyPackage();
     expect(Array.from(kp)).toEqual([9, 9]);
+  });
+
+  it("signingPublicKey round-trips a 32-byte Uint8Array", async () => {
+    const client = new CryptoClient(new FakeWorker() as unknown as Worker, "alice@corp");
+    const pk = await client.signingPublicKey();
+    expect(pk).toBeInstanceOf(Uint8Array);
+    expect(Array.from(pk)).toEqual(Array.from({ length: 32 }, (_, i) => i + 1));
   });
 
   it("createGroupWithCompliance forwards the welcome from the worker", async () => {

@@ -1,5 +1,6 @@
 export type CryptoRequest =
   | { id: string; kind: "keyPackage" }
+  | { id: string; kind: "signingPublicKey" }
   | { id: string; kind: "createGroup"; groupId: string }
   | { id: string; kind: "createGroupWithCompliance"; groupId: string; complianceKeyPackage: Uint8Array }
   | { id: string; kind: "addMember"; groupId: string; keyPackage: Uint8Array }

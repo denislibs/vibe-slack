@@ -55,6 +55,10 @@ impl WasmEngine {
         self.inner.key_package_bytes().map_err(to_js)
     }
 
+    pub fn signing_public_key(&self) -> Vec<u8> {
+        self.inner.signing_public_key()
+    }
+
     pub fn create_group(&mut self, group_id: &str) -> Result<(), JsError> {
         self.inner.create_group(group_id.as_bytes()).map_err(to_js)
     }
