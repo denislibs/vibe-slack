@@ -25,7 +25,7 @@ describe("App", () => {
     session.authenticated("t"); session.onboarded("d");
 
     const { getByText, getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={onSend} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={onSend} theme="dark" onToggleTheme={() => {}} userEmail="" />
     ));
     expect(getByText("wired")).toBeTruthy();
     expect(getByTestId("status").textContent).toBe("online");
@@ -38,7 +38,7 @@ describe("App", () => {
     const session = createSessionStore();
     session.authenticated("t"); session.onboarded("d");
     const { queryByText, findByText } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} theme="dark" onToggleTheme={() => {}} userEmail="" />
     ));
     expect(queryByText("late message")).toBeNull();
     // Mutate the store AFTER mount — the DOM must update reactively.
@@ -52,7 +52,7 @@ describe("App", () => {
     const session = createSessionStore();
     session.authenticated("t"); session.onboarded("d");
     const { getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} theme="dark" onToggleTheme={() => {}} userEmail="" />
     ));
     expect(getByTestId("status").textContent).toBe("offline");
     conn.setStatus("online");
@@ -67,7 +67,7 @@ describe("App auth gate", () => {
     groupId: "g1", conversation: createConversationStore(), connection: createConnectionStore(),
     session, workspace: selectedWorkspace(),
     onLogin: vi.fn(), onRegister: vi.fn(), onCreateWorkspace: vi.fn(), onSelectWorkspace: vi.fn(),
-    onSend: vi.fn(), authError: "", busy: false,
+    onSend: vi.fn(), authError: "", busy: false, theme: "dark" as const, onToggleTheme: vi.fn(), userEmail: "",
   });
 
   it("shows the auth page when anonymous", () => {
@@ -97,7 +97,7 @@ describe("App workspace gate", () => {
         groupId="g1" conversation={createConversationStore()} connection={createConnectionStore()}
         session={session} workspace={workspace}
         onLogin={vi.fn()} onRegister={vi.fn()} onCreateWorkspace={vi.fn()} onSelectWorkspace={vi.fn()}
-        onSend={vi.fn()} authError="" busy={false}
+        onSend={vi.fn()} authError="" busy={false} theme="dark" onToggleTheme={() => {}} userEmail=""
       />
     ));
     expect(getByText("Workspaces")).toBeTruthy();
@@ -118,7 +118,7 @@ describe("App workspace gate", () => {
         groupId="g1" conversation={conversation} connection={connection}
         session={session} workspace={workspace}
         onLogin={vi.fn()} onRegister={vi.fn()} onCreateWorkspace={vi.fn()} onSelectWorkspace={vi.fn()}
-        onSend={vi.fn()} authError="" busy={false}
+        onSend={vi.fn()} authError="" busy={false} theme="dark" onToggleTheme={() => {}} userEmail=""
       />
     ));
     expect(getByText("ws-chat")).toBeTruthy();

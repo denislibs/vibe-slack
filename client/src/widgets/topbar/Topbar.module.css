@@ -1,0 +1,22 @@
+.topbar {
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  gap: var(--space-4);
+}
+.name {
+  font-weight: 700;
+}
+.search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.search :global(input) {
+  width: 100%;
+  max-width: 480px;
+  opacity: 0.85;
+}

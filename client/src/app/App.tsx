@@ -20,6 +20,9 @@ export const App: Component<{
   onSend: (text: string) => void;
   authError: string;
   busy: boolean;
+  theme: "dark" | "light";
+  onToggleTheme: () => void;
+  userEmail: string;
 }> = (props) => (
   <Show
     when={props.session.status() !== "anonymous"}
@@ -40,6 +43,17 @@ export const App: Component<{
         messages={props.conversation.messages(props.groupId)}
         status={props.connection.status()}
         onSend={props.onSend}
+        workspaceName={
+          props.workspace.list().find((w) => w.id === props.workspace.current())?.name ??
+          "Workspace"
+        }
+        userEmail={props.userEmail}
+        theme={props.theme}
+        onToggleTheme={props.onToggleTheme}
+        channels={[]}
+        dms={[]}
+        activeId={props.groupId}
+        onSelect={() => {}}
       />
     </Show>
   </Show>

@@ -1,5 +1,6 @@
 import { createSignal, Show, type Component } from "solid-js";
-import { Button } from "../../shared/ui";
+import { Button, Input } from "../../shared/ui";
+import s from "./LoginForm.module.css";
 
 // Presentational auth form: collects credentials, delegates via callbacks. No logic.
 export const LoginForm: Component<{
@@ -12,13 +13,26 @@ export const LoginForm: Component<{
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   return (
-    <form onSubmit={(e) => e.preventDefault()}>
-      <label>Email<input aria-label="Email" type="email" value={email()} onInput={(e) => setEmail(e.currentTarget.value)} /></label>
-      <label>Username<input aria-label="Username" type="text" value={username()} onInput={(e) => setUsername(e.currentTarget.value)} /></label>
-      <label>Password<input aria-label="Password" type="password" value={password()} onInput={(e) => setPassword(e.currentTarget.value)} /></label>
-      <Show when={props.error}><p role="alert">{props.error}</p></Show>
-      <Button disabled={props.busy} onClick={() => props.onLogin(email(), password())}>Log in</Button>
-      <Button disabled={props.busy} onClick={() => props.onRegister(email(), username(), password())}>Register</Button>
+    <form class={s.form} onSubmit={(e) => e.preventDefault()}>
+      <label class={s.field}>
+        Email
+        <Input aria-label="Email" type="email" value={email()} onInput={(e) => setEmail(e.currentTarget.value)} />
+      </label>
+      <label class={s.field}>
+        Username
+        <Input aria-label="Username" type="text" value={username()} onInput={(e) => setUsername(e.currentTarget.value)} />
+      </label>
+      <label class={s.field}>
+        Password
+        <Input aria-label="Password" type="password" value={password()} onInput={(e) => setPassword(e.currentTarget.value)} />
+      </label>
+      <Show when={props.error}>
+        <p class={s.error} role="alert">{props.error}</p>
+      </Show>
+      <div class={s.actions}>
+        <Button variant="primary" disabled={props.busy} onClick={() => props.onLogin(email(), password())}>Log in</Button>
+        <Button variant="secondary" disabled={props.busy} onClick={() => props.onRegister(email(), username(), password())}>Register</Button>
+      </div>
     </form>
   );
 };
