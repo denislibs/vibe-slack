@@ -5,18 +5,25 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/messenger/backend/internal/as"
 	"github.com/messenger/backend/internal/config"
+	"github.com/messenger/backend/internal/delivery"
 	"github.com/messenger/backend/internal/devices"
+	"github.com/messenger/backend/internal/fanout"
 	"github.com/messenger/backend/internal/httpapi"
+	"github.com/messenger/backend/internal/hub"
 	"github.com/messenger/backend/internal/keypackages"
 	"github.com/messenger/backend/internal/opaque"
 	"github.com/messenger/backend/internal/platform/postgres"
 	"github.com/messenger/backend/internal/platform/redis"
 	"github.com/messenger/backend/internal/session"
 	"github.com/messenger/backend/internal/store"
+	"github.com/messenger/backend/internal/ws"
 )
 
 func main() {
@@ -63,11 +70,36 @@ func main() {
 	svc := as.NewService(osrv, store.NewUserRepo(pool), sess, rdb)
 	devSvc := devices.NewService(store.NewDeviceRepo(pool))
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
+	rosterRepo := store.NewRosterRepo(pool)
 
-	handler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl)
-
-	log.Printf("auth-service listening on %s", cfg.HTTPAddr)
-	if err := http.ListenAndServe(cfg.HTTPAddr, handler); err != nil {
-		log.Fatalf("server: %v", err)
+	// Delivery service + websocket gateway.
+	hubReg := hub.New(256)
+	fan := fanout.New(rdb, func(deviceID string, payload []byte) { hubReg.Deliver(deviceID, payload) })
+	defer fan.Close()
+	deliverySvc := delivery.NewService(store.NewMessageRepo(pool), rosterRepo, store.NewCursorRepo(pool), fan)
+	nodeID := os.Getenv("NODE_ID")
+	if nodeID == "" {
+		nodeID = "node"
 	}
+	gw := ws.NewGateway(sess, deliverySvc, hubReg, fan, nodeID)
+
+	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo)
+	root := http.NewServeMux()
+	root.Handle("/", apiHandler)
+	root.HandleFunc("/ws", gw.Handle)
+
+	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: root}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server: %v", err)
+		}
+	}()
+	log.Printf("auth+delivery service listening on %s", cfg.HTTPAddr)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutdownCtx)
 }

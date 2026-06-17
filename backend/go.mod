@@ -4,9 +4,11 @@ go 1.26
 
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
+	github.com/bytemare/opaque v0.18.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/redis/go-redis/v9 v9.20.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/redis v0.42.0
 )
 
 require (
@@ -19,10 +21,10 @@ require (
 	github.com/bytemare/hash v0.6.2 // indirect
 	github.com/bytemare/hash2curve v0.5.4 // indirect
 	github.com/bytemare/ksf v0.5.0 // indirect
-	github.com/bytemare/opaque v0.18.0 // indirect
 	github.com/bytemare/secp256k1 v0.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
@@ -45,6 +47,7 @@ require (
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
+	github.com/mdelapenya/tlscert v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect

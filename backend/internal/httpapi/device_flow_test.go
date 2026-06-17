@@ -50,7 +50,8 @@ func newFullServer(t *testing.T) http.Handler {
 	devSvc := devices.NewService(store.NewDeviceRepo(pool))
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
 	rl := session.NewRateLimiter(rdb, 1000, time.Minute)
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl)
+	roster := store.NewRosterRepo(pool)
+	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster)
 }
 
 func registerAndLogin(t *testing.T, h http.Handler, email, password string) string {

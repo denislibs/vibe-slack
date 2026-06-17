@@ -7,6 +7,7 @@ import (
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
 	"github.com/messenger/backend/internal/session"
+	"github.com/messenger/backend/internal/store"
 )
 
 // NewRouter wires the auth endpoints. Device/keypackage routes are added later.
@@ -27,11 +28,12 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
+	rh := &rosterHandlers{roster: rosterRepo}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -51,6 +53,11 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("POST /keypackages", auth(http.HandlerFunc(kh.upload)))
 	mux.Handle("GET /keypackages/count", auth(http.HandlerFunc(kh.count)))
 	mux.Handle("GET /keypackages/{device_id}", auth(http.HandlerFunc(kh.consume)))
+
+	// Authorization policy (whether the caller may mutate this conversation) is
+	// deliberately out of scope per the spec; auth provides the baseline check.
+	mux.Handle("POST /conversations/{group}/members", auth(http.HandlerFunc(rh.addMember)))
+	mux.Handle("DELETE /conversations/{group}/members/{device}", auth(http.HandlerFunc(rh.removeMember)))
 
 	return recoverMW(mux)
 }
