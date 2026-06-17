@@ -83,3 +83,28 @@ func TestConvRepo(t *testing.T) {
 		t.Fatalf("get absent → ErrNotFound, got %v", err)
 	}
 }
+
+func TestConvGroupInfo(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	users := NewUserRepo(pool)
+	wsRepo := NewWorkspaceRepo(pool)
+	repo := NewConvRepo(pool)
+	owner, _ := users.Create(ctx, "o@c", "owner", []byte("r"))
+	ws, _ := wsRepo.Create(ctx, "Acme", "acme", owner.ID)
+	repo.CreateChannel(ctx, "g1", ws.ID, "public", "general", owner.ID)
+
+	if _, err := repo.GroupInfo(ctx, "g1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unpublished → ErrNotFound, got %v", err)
+	}
+	if err := repo.SetGroupInfo(ctx, "g1", []byte("GINFO")); err != nil {
+		t.Fatalf("set: %v", err)
+	}
+	gi, err := repo.GroupInfo(ctx, "g1")
+	if err != nil || string(gi) != "GINFO" {
+		t.Fatalf("get: %v %q", err, gi)
+	}
+	if err := repo.SetGroupInfo(ctx, "missing", []byte("x")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("set unknown → ErrNotFound, got %v", err)
+	}
+}

@@ -56,7 +56,7 @@ func newFullServer(t *testing.T) http.Handler {
 	roster := store.NewRosterRepo(pool)
 	ktPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	ktSvc := kt.NewService(store.NewKTRepo(pool))
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil, nil)
+	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil, nil, nil, nil, nil, nil, "")
 }
 
 // usernameFromEmail derives a username valid under as.ValidateUsername

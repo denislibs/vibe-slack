@@ -32,6 +32,9 @@ function cryptoPort(name: string) {
         const r = await d.handleRequest({ id: "d", kind: "decrypt", groupId: group, message: ct });
         return (r as any).result as Uint8Array;
       },
+      async joinFromWelcome(welcome: Uint8Array): Promise<void> {
+        await d.handleRequest({ id: "w", kind: "joinFromWelcome", welcome });
+      },
     },
   };
 }

@@ -76,7 +76,8 @@ func main() {
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
 	rosterRepo := store.NewRosterRepo(pool)
 	wsSvc := workspace.NewService(store.NewWorkspaceRepo(pool), store.NewUserRepo(pool))
-	convSvc := conversations.NewService(store.NewConvRepo(pool), store.NewWorkspaceRepo(pool), store.NewUserRepo(pool))
+	convRepo := store.NewConvRepo(pool)
+	convSvc := conversations.NewService(convRepo, store.NewWorkspaceRepo(pool), store.NewUserRepo(pool))
 
 	// Delivery service + websocket gateway.
 	hubReg := hub.New(256)
@@ -117,7 +118,8 @@ func main() {
 		}
 	}()
 
-	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub, wsSvc, convSvc)
+	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub, wsSvc, convSvc,
+		store.NewUserRepo(pool), store.NewDeviceRepo(pool), store.NewWorkspaceRepo(pool), convRepo, cfg.ComplianceDeviceID)
 	root := http.NewServeMux()
 	root.Handle("/", apiHandler)
 	root.HandleFunc("/ws", gw.Handle)

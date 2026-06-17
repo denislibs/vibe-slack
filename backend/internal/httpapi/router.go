@@ -32,7 +32,7 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service, userRepo *store.UserRepo, deviceRepo *store.DeviceRepo, wsRepo *store.WorkspaceRepo, convRepo *store.ConvRepo, complianceDeviceID string) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
@@ -41,6 +41,8 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	wh := &workspaceHandlers{svc: wsSvc}
 	ch := &conversationHandlers{svc: convSvc}
+	kmh := &keyMaterialHandlers{users: userRepo, roles: wsRepo, devices: deviceRepo, keyPkgs: kpSvc}
+	gih := &groupInfoHandlers{conv: convSvc, store: convRepo, compliance: kpSvc, complianceDeviceID: complianceDeviceID}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -81,12 +83,18 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("DELETE /workspaces/{id}/members/me", auth(http.HandlerFunc(wh.leave)))
 	mux.Handle("DELETE /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.removeMember)))
 
+	mux.Handle("GET /workspaces/{wsId}/users/{identity}/key-material", auth(http.HandlerFunc(kmh.get)))
+
 	mux.Handle("POST /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.create)))
 	mux.Handle("GET /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.list)))
 	mux.Handle("GET /conversations/{group}", auth(http.HandlerFunc(ch.get)))
 	mux.Handle("POST /conversations/{group}/join", auth(http.HandlerFunc(ch.join)))
 	mux.Handle("POST /conversations/{group}/users", auth(http.HandlerFunc(ch.addUser)))
 	mux.Handle("DELETE /conversations/{group}/users/{userId}", auth(http.HandlerFunc(ch.removeUser)))
+
+	mux.Handle("PUT /conversations/{group}/group-info", auth(http.HandlerFunc(gih.putGroupInfo)))
+	mux.Handle("GET /conversations/{group}/group-info", auth(http.HandlerFunc(gih.getGroupInfo)))
+	mux.Handle("GET /keypackages/compliance", auth(http.HandlerFunc(gih.complianceKeyPackage)))
 
 	return recoverMW(mux)
 }

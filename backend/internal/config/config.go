@@ -18,6 +18,10 @@ type Config struct {
 
 	// KTSigningKey is the base64-encoded Ed25519 private key used to sign STHs.
 	KTSigningKey string
+
+	// ComplianceDeviceID, if set, designates a device whose KeyPackages back
+	// the compliance KeyPackage endpoint. Optional; empty disables it.
+	ComplianceDeviceID string
 }
 
 func Load() (*Config, error) {
@@ -29,6 +33,7 @@ func Load() (*Config, error) {
 		OpaqueServerPublicKey:  os.Getenv("OPAQUE_SERVER_PUBLIC_KEY"),
 		OpaqueOPRFSeed:         os.Getenv("OPAQUE_OPRF_SEED"),
 		KTSigningKey:           os.Getenv("KT_SIGNING_KEY"),
+		ComplianceDeviceID:     os.Getenv("COMPLIANCE_DEVICE_ID"),
 	}
 	for k, v := range map[string]string{
 		"DATABASE_URL":              c.DatabaseURL,

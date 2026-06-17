@@ -151,6 +151,34 @@ func (r *ConvRepo) MemberUserIDs(ctx context.Context, groupID string) ([]string,
 	return out, rows.Err()
 }
 
+// SetGroupInfo stores the latest published GroupInfo (for external-commit joins).
+func (r *ConvRepo) SetGroupInfo(ctx context.Context, groupID string, info []byte) error {
+	ct, err := r.pool.Exec(ctx, `UPDATE conversation_meta SET group_info=$2 WHERE group_id=$1`, groupID, info)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GroupInfo returns the last published GroupInfo, or ErrNotFound if none/unknown group.
+func (r *ConvRepo) GroupInfo(ctx context.Context, groupID string) ([]byte, error) {
+	var gi []byte
+	err := r.pool.QueryRow(ctx, `SELECT group_info FROM conversation_meta WHERE group_id=$1`, groupID).Scan(&gi)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if gi == nil {
+		return nil, ErrNotFound // not yet published
+	}
+	return gi, nil
+}
+
 // ListForUser returns conversations in the workspace the user can see:
 // any public channel, plus any conversation the user is a member of.
 func (r *ConvRepo) ListForUser(ctx context.Context, wsID, userID string) ([]Conversation, error) {
