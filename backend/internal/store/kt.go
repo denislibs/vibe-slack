@@ -13,7 +13,7 @@ type KTLeaf struct {
 	LeafIndex int64
 	Identity  string
 	Version   int64
-	DeviceSet []byte
+	DeviceSet []byte // full RFC6962-preimage canonical leaf bytes (identity||version||keys), NOT just keys
 	LeafHash  []byte
 }
 
@@ -106,6 +106,24 @@ func (r *KTRepo) LatestLeafForIdentity(ctx context.Context, identity string) (*K
 	err := r.pool.QueryRow(ctx,
 		`SELECT leaf_index, identity, version, device_set, leaf_hash FROM kt_leaves
 		 WHERE identity=$1 ORDER BY version DESC LIMIT 1`, identity).
+		Scan(&l.LeafIndex, &l.Identity, &l.Version, &l.DeviceSet, &l.LeafHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &l, nil
+}
+
+// LatestLeafForIdentityAt returns the identity's highest-version leaf whose
+// leaf_index < maxExclusive (i.e. covered by an STH of tree_size == maxExclusive).
+// Returns ErrNotFound if the identity has no leaf within that bound yet.
+func (r *KTRepo) LatestLeafForIdentityAt(ctx context.Context, identity string, maxExclusive int64) (*KTLeaf, error) {
+	var l KTLeaf
+	err := r.pool.QueryRow(ctx,
+		`SELECT leaf_index, identity, version, device_set, leaf_hash FROM kt_leaves
+		 WHERE identity=$1 AND leaf_index < $2 ORDER BY version DESC LIMIT 1`, identity, maxExclusive).
 		Scan(&l.LeafIndex, &l.Identity, &l.Version, &l.DeviceSet, &l.LeafHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound

@@ -2,6 +2,7 @@ package kt
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/messenger/backend/internal/store"
@@ -43,7 +44,17 @@ func (r *Relay) Tick(ctx context.Context) error {
 	if !got {
 		return nil
 	}
-	defer conn.Exec(ctx, `SELECT pg_advisory_unlock($1)`, advisoryLockKey)
+	defer func() {
+		// Detached context: the tick ctx may be canceled on shutdown, but the
+		// advisory lock MUST be released so another node can take over.
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, err := conn.Exec(unlockCtx, `SELECT pg_advisory_unlock($1)`, advisoryLockKey); err != nil {
+			// best-effort; the connection's session lock is also released when the
+			// connection eventually closes.
+			_ = err
+		}
+	}()
 
 	rows, err := conn.Query(ctx,
 		`SELECT id, user_id FROM kt_outbox WHERE relayed_at IS NULL ORDER BY id`)

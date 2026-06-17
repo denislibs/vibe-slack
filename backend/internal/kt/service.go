@@ -25,12 +25,14 @@ func (s *Service) LatestSTH(ctx context.Context) (*store.KTSTH, error) {
 }
 
 // Lookup returns identity's latest leaf plus an inclusion proof against the latest STH.
+// It fetches the STH first, then a leaf bounded by the STH's tree size, so the returned
+// leaf is always covered by the STH (no out-of-range proofs in the commit/issue window).
 func (s *Service) Lookup(ctx context.Context, identity string) (*LookupResult, error) {
-	leaf, err := s.kt.LatestLeafForIdentity(ctx, identity)
+	sth, err := s.kt.LatestSTH(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sth, err := s.kt.LatestSTH(ctx)
+	leaf, err := s.kt.LatestLeafForIdentityAt(ctx, identity, sth.TreeSize)
 	if err != nil {
 		return nil, err
 	}

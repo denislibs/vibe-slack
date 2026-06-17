@@ -3,6 +3,7 @@ package httpapi
 import (
 	"crypto/ed25519"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -49,7 +50,7 @@ func (h *ktHandlers) sth(w http.ResponseWriter, r *http.Request) {
 func (h *ktHandlers) key(w http.ResponseWriter, r *http.Request) {
 	identity := r.PathValue("identity")
 	res, err := h.svc.Lookup(r.Context(), identity)
-	if err == store.ErrNotFound {
+	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "no key record for identity")
 		return
 	}

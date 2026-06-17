@@ -41,3 +41,38 @@ func TestServiceLookupReturnsVerifiableProof(t *testing.T) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestLookupNeverReturnsLeafBeyondSTH(t *testing.T) {
+	ctx := context.Background()
+	pool := newPool(t)
+	users := store.NewUserRepo(pool)
+	devices := store.NewDeviceRepo(pool)
+	ktRepo := store.NewKTRepo(pool)
+	_, priv, _ := ed25519.GenerateKey(rand.Reader)
+	relay := NewRelay(pool, ktRepo, store.NewDeviceRepo(pool), NewSTHSigner(priv))
+	svc := NewService(ktRepo)
+
+	u, _ := users.Create(ctx, "snap@corp", []byte("rec"))
+	devices.Enroll(ctx, u.ID, []byte("k1"), "a")
+	relay.Tick(ctx) // STH now covers u's leaf
+
+	// Append a leaf for a SECOND identity directly WITHOUT issuing a new STH,
+	// simulating the window between leaf-commit and STH-issue.
+	u2, _ := users.Create(ctx, "snap2@corp", []byte("rec"))
+	canonical := CanonicalLeaf(u2.ID, 1, [][]byte{[]byte("k2")})
+	ktRepo.AppendLeaf(ctx, u2.ID, 1, canonical, LeafHash(canonical))
+
+	// u2's leaf exists but is beyond the current STH → Lookup must return ErrNotFound,
+	// NOT a broken/out-of-range proof.
+	if _, err := svc.Lookup(ctx, u2.ID); err != store.ErrNotFound {
+		t.Fatalf("expected ErrNotFound for leaf beyond STH, got %v", err)
+	}
+	// u (covered by the STH) still looks up fine with a verifiable proof.
+	res, err := svc.Lookup(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("lookup u: %v", err)
+	}
+	if res.STH.TreeSize != 1 || res.LeafIndex != 0 {
+		t.Fatalf("unexpected: treeSize=%d leafIndex=%d", res.STH.TreeSize, res.LeafIndex)
+	}
+}
