@@ -53,4 +53,21 @@ describe("AsClient", () => {
     }) as any);
     await expect(as.loginStart("a@corp", "KE1")).rejects.toThrow();
   });
+
+  it("session returns the parsed user_id + device_id and sends credentials", async () => {
+    const fetchFn = mockFetch({
+      "GET /auth/session": { status: 200, body: { user_id: "u1", device_id: "d1" } },
+    });
+    const as = new AsClient("http://as.test", fetchFn as any);
+    expect(await as.session("")).toEqual({ user_id: "u1", device_id: "d1" });
+    const init = fetchFn.mock.calls[0][1] as RequestInit;
+    expect(init.credentials).toBe("include");
+  });
+
+  it("session throws on 401 (no/expired session)", async () => {
+    const as = new AsClient("http://as.test", mockFetch({
+      "GET /auth/session": { status: 401, body: { error: "unauthorized" } },
+    }) as any);
+    await expect(as.session("")).rejects.toThrow();
+  });
 });

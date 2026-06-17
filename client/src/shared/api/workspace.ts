@@ -24,6 +24,7 @@ export class WorkspaceClient {
     const init: RequestInit = {
       method,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      credentials: "include",
     };
     if (body !== undefined) init.body = JSON.stringify(body);
     const res = await this.fetchFn(this.baseURL + path, init);

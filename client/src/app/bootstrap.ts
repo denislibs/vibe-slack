@@ -168,5 +168,22 @@ export function bootstrap(deviceName: string) {
     userLabel: () => userLabel(),
   });
 
-  return { orchestrator, conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel };
+  // Restore-on-boot: probe the HttpOnly `session` cookie. If it authenticates,
+  // skip the auth screen and rehydrate workspaces/conversations + WS. Empty token
+  // is fine — the cookie carries auth (credentials:"include"). Any failure (e.g. a
+  // 401 with no/expired cookie) means we stay on the auth screen.
+  async function restoreSession(): Promise<boolean> {
+    try {
+      await as.session("");          // cookie-authed; throws 401 if no session
+      session.restore();             // skip the auth screen
+      await workspaces.load();
+      await conversations.load();
+      orchestrator.connect("");      // WS via the cookie (empty token ok)
+      return true;
+    } catch {
+      return false;                  // no/expired session → stay on auth screen
+    }
+  }
+
+  return { orchestrator, conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel, restoreSession };
 }

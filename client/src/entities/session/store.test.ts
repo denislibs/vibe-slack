@@ -14,6 +14,13 @@ describe("session store", () => {
     expect(s.deviceId()).toBe("DEV1");
   });
 
+  it("restore() goes onboarded with an empty token (cookie carries auth)", () => {
+    const s = createSessionStore();
+    s.restore();
+    expect(s.status()).toBe("onboarded");
+    expect(s.token()).toBe("");
+  });
+
   it("clear() resets to anonymous", () => {
     const s = createSessionStore();
     s.authenticated("TOK");
