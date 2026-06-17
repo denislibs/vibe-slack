@@ -81,7 +81,7 @@ export function bootstrap(deviceName: string) {
   };
   const authFlow = createAuthFlow({
     authenticator: {
-      register: async (email, pw) => createAuthenticator(await opaqueOps(), as).register(email, pw),
+      register: async (email, username, pw) => createAuthenticator(await opaqueOps(), as).register(email, username, pw),
       login: async (email, pw) => createAuthenticator(await opaqueOps(), as).login(email, pw),
     },
     onboard: (token) => onboardDevice({

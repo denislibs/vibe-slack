@@ -20,7 +20,7 @@ if (root) {
       connection={connection}
       session={session}
       onLogin={(email, pw) => void run(() => authFlow.login(email, pw))()}
-      onRegister={(email, pw) => void run(() => authFlow.register(email, pw))()}
+      onRegister={(email, username, pw) => void run(() => authFlow.register(email, username, pw))()}
       onSend={(text) => orchestrator.sendText("g1", text)}
       authError={authError()}
       busy={busy()}

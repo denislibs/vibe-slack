@@ -11,7 +11,7 @@ export const App: Component<{
   connection: ConnectionStore;
   session: SessionStore;
   onLogin: (email: string, password: string) => void;
-  onRegister: (email: string, password: string) => void;
+  onRegister: (email: string, username: string, password: string) => void;
   onSend: (text: string) => void;
   authError: string;
   busy: boolean;

@@ -3,7 +3,7 @@ import { LoginForm } from "../../widgets/login-form/LoginForm";
 
 export const AuthPage: Component<{
   onLogin: (email: string, password: string) => void;
-  onRegister: (email: string, password: string) => void;
+  onRegister: (email: string, username: string, password: string) => void;
   error: string;
   busy: boolean;
 }> = (props) => (
