@@ -146,6 +146,30 @@ func TestSetRoleAndRemoveAuthz(t *testing.T) {
 	}
 }
 
+// raceRepo returns ErrSlugTaken on the first Create (simulating a lost
+// check-then-insert race), then succeeds — proving Service.Create retries.
+type raceRepo struct {
+	*fakeRepo
+	failsLeft int
+}
+
+func (r *raceRepo) Create(ctx context.Context, name, slug, owner string) (*store.Workspace, error) {
+	if r.failsLeft > 0 {
+		r.failsLeft--
+		return nil, store.ErrSlugTaken
+	}
+	return r.fakeRepo.Create(ctx, name, slug, owner)
+}
+
+func TestCreateRetriesOnSlugRace(t *testing.T) {
+	repo := &raceRepo{fakeRepo: newFakeRepo(), failsLeft: 1}
+	svc := NewService(repo, &fakeUsers{byKey: map[string]*store.User{}})
+	ws, err := svc.Create(context.Background(), "owner", "Acme")
+	if err != nil || ws == nil {
+		t.Fatalf("expected create to retry past the slug race, got %v", err)
+	}
+}
+
 // Coverage for matrix cells the lifecycle test doesn't hit directly.
 func TestWorkspaceMatrixCoverage(t *testing.T) {
 	ctx := context.Background()

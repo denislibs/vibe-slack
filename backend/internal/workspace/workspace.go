@@ -43,11 +43,24 @@ func (s *Service) Create(ctx context.Context, ownerUserID, name string) (*store.
 	if name == "" {
 		return nil, ErrInvalid
 	}
-	slug, err := s.uniqueSlug(ctx, slugify(name))
-	if err != nil {
-		return nil, err
+	// Slug is generated server-side and deduped; retry a few times to absorb the
+	// rare check-then-insert race between concurrent creates of the same name.
+	base := slugify(name)
+	for attempt := 0; attempt < 5; attempt++ {
+		slug, err := s.uniqueSlug(ctx, base)
+		if err != nil {
+			return nil, err
+		}
+		ws, err := s.repo.Create(ctx, name, slug, ownerUserID)
+		if errors.Is(err, store.ErrSlugTaken) {
+			continue // lost the race; recompute against the now-present slug
+		}
+		if err != nil {
+			return nil, err
+		}
+		return ws, nil
 	}
-	return s.repo.Create(ctx, name, slug, ownerUserID)
+	return nil, ErrInvalid
 }
 
 func (s *Service) ListForUser(ctx context.Context, userID string) ([]store.WorkspaceWithRole, error) {

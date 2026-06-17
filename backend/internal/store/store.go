@@ -6,6 +6,7 @@ var (
 	ErrNotFound      = errors.New("store: not found")
 	ErrConflict      = errors.New("store: conflict")
 	ErrUsernameTaken = errors.New("store: username taken")
+	ErrSlugTaken     = errors.New("store: workspace slug taken")
 )
 
 // User is an account record.

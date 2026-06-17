@@ -42,6 +42,11 @@ func (r *WorkspaceRepo) Create(ctx context.Context, name, slug, ownerUserID stri
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			// The only unique constraint on this insert is the slug; surface it
+			// distinctly so the service can pick a fresh slug and retry.
+			if pgErr.ConstraintName == "workspaces_slug_key" {
+				return nil, ErrSlugTaken
+			}
 			return nil, ErrConflict
 		}
 		return nil, err
