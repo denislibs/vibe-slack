@@ -1,0 +1,59 @@
+{
+  "kt_public_key": "2c8t8ncl9PoqaTLKKhtvHfIM3H/BO5HCU9bCRegXMU0=",
+  "lookup": {
+    "identity": "carol@corp",
+    "leaf_index": 2,
+    "version": 2,
+    "device_set": "AAAACmNhcm9sQGNvcnAAAAAAAAAAAgAAAAEAAAAJZGV2LWtleS0y",
+    "audit_path": [
+      "QttbR+RF+Dw1+jmSwUWMbyT4OhaBTt6Om6QFOkJynYU=",
+      "5aEvdxOqaUfe98e6adyX30woiMEBnyUNHDPe1tlAPb4=",
+      "nBIFDaJUBTUmSHXO9nT3aTh4I7TRdoh9BRzcl7HMxAI="
+    ],
+    "sth": {
+      "tree_size": 5,
+      "root_hash": "OVqVHnitprhU0B9LFSVF9xpMu24WYd8LkIhsAHFs+fw=",
+      "signature": "AsqxT8ndZX48IuACoWDhsiZ2xKDyGZx8NoQDwPsOrNyzKcaibs6kXr559vnab8dz5aiR+j0xc64U4Ze6kRbfBg=="
+    }
+  },
+  "lookup_from": {
+    "identity": "alice@corp",
+    "leaf_index": 0,
+    "version": 1,
+    "device_set": "AAAACmFsaWNlQGNvcnAAAAAAAAAAAQAAAAEAAAAJZGV2LWtleS0w",
+    "audit_path": [
+      "T8APfrlL5RQ0HixmFF0EkeP4IIHcStQ+VU2MmOwaKfo=",
+      "b9eGCd8/hPpDYt66LLATlVQNids5MHMPFqTAWUNbUVg="
+    ],
+    "sth": {
+      "tree_size": 3,
+      "root_hash": "s29zdIffLeypxQvHeiEmMEB9jMhDuNuY/kv3fzikXYE=",
+      "signature": "XxO0dY8stzWemyDUNfixKPlKoGjwXszw5sAULc4UHTi4MbfNxPxN98i511N43vrBzFrxijZ3/oAND5MAn+HiAw=="
+    }
+  },
+  "fork": {
+    "tree_size": 5,
+    "root_hash": "IBlxFZ3Q7aXg6KgeQr651RdubTn1bWG/tYA92HjbyR8=",
+    "signature": "uJKcbqO3t64Oj5Us0A+UQYLu/0H/x2SuP52BGMM1vhZHt0brnB0VlV0w7nHjbYyeUUaOKHw2fdfWmBlN1coEAA=="
+  },
+  "consistency": {
+    "from": 3,
+    "to": 5,
+    "proof": [
+      "b9eGCd8/hPpDYt66LLATlVQNids5MHMPFqTAWUNbUVg=",
+      "QttbR+RF+Dw1+jmSwUWMbyT4OhaBTt6Om6QFOkJynYU=",
+      "5aEvdxOqaUfe98e6adyX30woiMEBnyUNHDPe1tlAPb4=",
+      "nBIFDaJUBTUmSHXO9nT3aTh4I7TRdoh9BRzcl7HMxAI="
+    ],
+    "sth_from": {
+      "tree_size": 3,
+      "root_hash": "s29zdIffLeypxQvHeiEmMEB9jMhDuNuY/kv3fzikXYE=",
+      "signature": "XxO0dY8stzWemyDUNfixKPlKoGjwXszw5sAULc4UHTi4MbfNxPxN98i511N43vrBzFrxijZ3/oAND5MAn+HiAw=="
+    },
+    "sth_to": {
+      "tree_size": 5,
+      "root_hash": "OVqVHnitprhU0B9LFSVF9xpMu24WYd8LkIhsAHFs+fw=",
+      "signature": "AsqxT8ndZX48IuACoWDhsiZ2xKDyGZx8NoQDwPsOrNyzKcaibs6kXr559vnab8dz5aiR+j0xc64U4Ze6kRbfBg=="
+    }
+  }
+}
