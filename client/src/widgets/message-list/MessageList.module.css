@@ -6,6 +6,18 @@
 .group {
   margin: 0;
 }
+/* A newly-added message group slides up + fades in. */
+:global(.msg-enter-active) {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+:global(.msg-enter) {
+  opacity: 0;
+  transform: translateY(8px);
+}
+:global(.msg-enter-to) {
+  opacity: 1;
+  transform: translateY(0);
+}
 /* First message of a group: avatar + name + timestamp + body. */
 .lead {
   display: flex;

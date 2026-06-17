@@ -1,4 +1,5 @@
 import { For, Show, createMemo, type Component } from "solid-js";
+import { TransitionGroup } from "solid-transition-group";
 import { Avatar } from "../../shared/ui";
 import type { ChatMessage } from "../../entities/conversation/store";
 import s from "./MessageList.module.css";
@@ -35,35 +36,37 @@ export const MessageList: Component<{ messages: ChatMessage[]; title?: string }>
       }
     >
       <ul class={s.list} data-testid="message-list">
-        <For each={groups()}>
-          {(g) => (
-            <li class={s.group}>
-              <For each={g.messages}>
-                {(m, i) => (
-                  <Show
-                    when={i() === 0}
-                    fallback={
-                      <div class={s.cont}>
-                        <span class={s.text}>{m.text}</span>
-                      </div>
-                    }
-                  >
-                    <div class={s.lead}>
-                      <Avatar name={m.sender} size={36} />
-                      <div class={s.body}>
-                        <div class={s.meta}>
-                          <b class={s.sender}>{m.sender}</b>
-                          <span class={s.time}>now</span>
+        <TransitionGroup name="msg">
+          <For each={groups()}>
+            {(g) => (
+              <li class={s.group}>
+                <For each={g.messages}>
+                  {(m, i) => (
+                    <Show
+                      when={i() === 0}
+                      fallback={
+                        <div class={s.cont}>
+                          <span class={s.text}>{m.text}</span>
                         </div>
-                        <span class={s.text}>{m.text}</span>
+                      }
+                    >
+                      <div class={s.lead}>
+                        <Avatar name={m.sender} size={36} />
+                        <div class={s.body}>
+                          <div class={s.meta}>
+                            <b class={s.sender}>{m.sender}</b>
+                            <span class={s.time}>now</span>
+                          </div>
+                          <span class={s.text}>{m.text}</span>
+                        </div>
                       </div>
-                    </div>
-                  </Show>
-                )}
-              </For>
-            </li>
-          )}
-        </For>
+                    </Show>
+                  )}
+                </For>
+              </li>
+            )}
+          </For>
+        </TransitionGroup>
       </ul>
     </Show>
   );
