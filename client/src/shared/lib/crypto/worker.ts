@@ -53,6 +53,9 @@ async function dispatchTo(
       case "keyPackage":
         result = engine.key_package_bytes();
         break;
+      case "signingPublicKey":
+        result = engine.signing_public_key();
+        break;
       case "createGroup":
         engine.create_group(req.groupId);
         result = null;

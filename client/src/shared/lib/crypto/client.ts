@@ -41,6 +41,9 @@ export class CryptoClient {
   async keyPackage(): Promise<Uint8Array> {
     return (await this.send({ kind: "keyPackage" })) as Uint8Array;
   }
+  async signingPublicKey(): Promise<Uint8Array> {
+    return (await this.send({ kind: "signingPublicKey" })) as Uint8Array;
+  }
   async createGroup(groupId: string): Promise<void> {
     await this.send({ kind: "createGroup", groupId });
   }

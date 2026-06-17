@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 import { App } from "./App";
 import { createConversationStore } from "../entities/conversation/store";
 import { createConnectionStore } from "../entities/connection/store";
+import { createSessionStore } from "../entities/session/store";
 
 describe("App", () => {
   it("renders the chat page wired to injected stores + send handler", () => {
@@ -12,9 +13,11 @@ describe("App", () => {
     const conn = createConnectionStore();
     conn.setStatus("online");
     const onSend = vi.fn();
+    const session = createSessionStore();
+    session.authenticated("t"); session.onboarded("d");
 
     const { getByText, getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} onSend={onSend} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={onSend} />
     ));
     expect(getByText("wired")).toBeTruthy();
     expect(getByTestId("status").textContent).toBe("online");
@@ -24,8 +27,10 @@ describe("App", () => {
     const conv = createConversationStore();
     const conn = createConnectionStore();
     conn.setStatus("online");
+    const session = createSessionStore();
+    session.authenticated("t"); session.onboarded("d");
     const { queryByText, findByText } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={() => {}} />
     ));
     expect(queryByText("late message")).toBeNull();
     // Mutate the store AFTER mount — the DOM must update reactively.
@@ -36,13 +41,37 @@ describe("App", () => {
   it("re-renders when connection status changes after mount", async () => {
     const conv = createConversationStore();
     const conn = createConnectionStore();
+    const session = createSessionStore();
+    session.authenticated("t"); session.onboarded("d");
     const { getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={() => {}} />
     ));
     expect(getByTestId("status").textContent).toBe("offline");
     conn.setStatus("online");
     // findBy/await a microtask for Solid to flush.
     await Promise.resolve();
     expect(getByTestId("status").textContent).toBe("online");
+  });
+});
+
+describe("App auth gate", () => {
+  const base = (session: ReturnType<typeof createSessionStore>) => ({
+    groupId: "g1", conversation: createConversationStore(), connection: createConnectionStore(),
+    session, onLogin: vi.fn(), onRegister: vi.fn(), onSend: vi.fn(), authError: "", busy: false,
+  });
+
+  it("shows the auth page when anonymous", () => {
+    const { getByText } = render(() => <App {...base(createSessionStore())} />);
+    expect(getByText("Sign in")).toBeTruthy();
+  });
+
+  it("shows the chat when onboarded", () => {
+    const session = createSessionStore();
+    session.authenticated("TOK"); session.onboarded("DEV1");
+    const props = base(session);
+    props.conversation.addMessage("g1", { seq: 1, sender: "alice", text: "hello-chat" });
+    props.connection.setStatus("online");
+    const { getByText } = render(() => <App {...props} />);
+    expect(getByText("hello-chat")).toBeTruthy();
   });
 });

@@ -48,6 +48,12 @@ impl Engine {
         self.identity.key_package_bytes(&self.provider)
     }
 
+    /// The device's Ed25519 signing public key (the MLS credential's signature key),
+    /// for registering the device with the Authentication Service.
+    pub fn signing_public_key(&self) -> Vec<u8> {
+        self.identity.signer.to_public_vec()
+    }
+
     pub fn has_group(&self, group_id: &[u8]) -> bool {
         self.groups.contains_key(group_id)
     }
@@ -251,6 +257,14 @@ fn hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn engine_exposes_signing_public_key() {
+        let e = Engine::new(b"alice@corp");
+        let pk = e.signing_public_key();
+        assert_eq!(pk.len(), 32, "Ed25519 public key is 32 bytes");
+        assert_eq!(pk, e.signing_public_key()); // stable across calls
+    }
 
     #[test]
     fn alice_creates_group_and_adds_bob() {
