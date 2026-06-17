@@ -139,5 +139,5 @@ export function bootstrap(deviceName: string) {
     userLabel: () => userLabel(),
   });
 
-  return { orchestrator, conversation, connection, session, workspace, workspaces, authFlow, conversations, setUserLabel };
+  return { orchestrator, conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel };
 }

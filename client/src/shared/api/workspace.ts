@@ -45,4 +45,7 @@ export class WorkspaceClient {
       email_or_username: emailOrUsername,
     });
   }
+  searchMembers(token: string, wsId: string, q: string): Promise<WorkspaceMember[]> {
+    return this.call<WorkspaceMember[]>(token, "GET", `/workspaces/${wsId}/members/search?q=${encodeURIComponent(q)}`);
+  }
 }

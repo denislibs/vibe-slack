@@ -28,6 +28,11 @@ export function createConversationsController(deps: ConversationsControllerDeps)
   return {
     channels, dms, activeId,
     load,
+    // TODO(UI-4): join public on select. The `list` payload has no membership
+    // flag, so we cannot tell whether the user already belongs to a public
+    // channel; auto-joining safely needs membership tracking the list does not
+    // provide. Deferred per task scope — for now select shows channels the user
+    // is already a member of.
     select: (id: string) => setActiveId(id),
     async createChannel(name: string, visibility: "public" | "private") {
       const conv = await deps.create({ type: "channel", visibility, name });

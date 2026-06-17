@@ -4,6 +4,7 @@ import { createSignal } from "solid-js";
 import { App } from "./app/App";
 import { bootstrap } from "./app/bootstrap";
 import { CreateChannelModal } from "./widgets/create-channel-modal/CreateChannelModal";
+import { NewDmModal } from "./widgets/new-dm-modal/NewDmModal";
 import { createThemeStore } from "./entities/theme/store";
 
 // Construct early so the default `data-theme` is applied to <html> before render.
@@ -12,11 +13,17 @@ const theme = createThemeStore();
 
 const root = document.getElementById("root");
 if (root) {
-  const { conversation, connection, session, workspace, workspaces, authFlow, conversations, setUserLabel } = bootstrap("device");
+  const { conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel } = bootstrap("device");
   const [authError, setAuthError] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [userEmail, setUserEmail] = createSignal("");
   const [createChannelOpen, setCreateChannelOpen] = createSignal(false);
+  const [newDmOpen, setNewDmOpen] = createSignal(false);
+  const [dmResults, setDmResults] = createSignal<{ user_id: string; username: string; email: string }[]>([]);
+  const runQuery = async (q: string) => {
+    const r = await wsClient.searchMembers(session.token() ?? "", workspace.current() ?? "", q);
+    setDmResults(r);
+  };
   const run = (fn: () => Promise<void>) => async () => {
     setBusy(true); setAuthError("");
     try { await fn(); } catch { setAuthError("invalid email or password"); }
@@ -50,12 +57,19 @@ if (root) {
         activeId={conversations.activeId()}
         onSelect={(id) => conversations.select(id)}
         onCreateChannel={() => setCreateChannelOpen(true)}
-        onNewDm={() => {/* UI3-3 */}}
+        onNewDm={() => setNewDmOpen(true)}
       />
       <CreateChannelModal
         open={createChannelOpen()}
         onClose={() => setCreateChannelOpen(false)}
         onCreate={(name, vis) => { void conversations.createChannel(name, vis); setCreateChannelOpen(false); }}
+      />
+      <NewDmModal
+        open={newDmOpen()}
+        onClose={() => setNewDmOpen(false)}
+        results={dmResults()}
+        onQuery={(q) => void runQuery(q)}
+        onPick={(u) => { void conversations.startDm(u); setNewDmOpen(false); }}
       />
     </>
   ), root);
