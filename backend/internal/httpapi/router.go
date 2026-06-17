@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/messenger/backend/internal/as"
+	"github.com/messenger/backend/internal/conversations"
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
 	"github.com/messenger/backend/internal/kt"
@@ -31,7 +32,7 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
@@ -39,6 +40,7 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	rh := &rosterHandlers{roster: rosterRepo}
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	wh := &workspaceHandlers{svc: wsSvc}
+	ch := &conversationHandlers{svc: convSvc}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -77,6 +79,13 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("PATCH /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.setRole)))
 	mux.Handle("DELETE /workspaces/{id}/members/me", auth(http.HandlerFunc(wh.leave)))
 	mux.Handle("DELETE /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.removeMember)))
+
+	mux.Handle("POST /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.create)))
+	mux.Handle("GET /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.list)))
+	mux.Handle("GET /conversations/{group}", auth(http.HandlerFunc(ch.get)))
+	mux.Handle("POST /conversations/{group}/join", auth(http.HandlerFunc(ch.join)))
+	mux.Handle("POST /conversations/{group}/users", auth(http.HandlerFunc(ch.addUser)))
+	mux.Handle("DELETE /conversations/{group}/users/{userId}", auth(http.HandlerFunc(ch.removeUser)))
 
 	return recoverMW(mux)
 }

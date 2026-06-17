@@ -100,3 +100,19 @@ type wsMemberResp struct {
 	Email    string `json:"email"`
 	Role     string `json:"role"`
 }
+
+type createConvReq struct {
+	Type            string `json:"type"`
+	Visibility      string `json:"visibility"`
+	Name            string `json:"name"`
+	EmailOrUsername string `json:"email_or_username"`
+}
+type convResp struct {
+	GroupID    string `json:"group_id"`
+	Type       string `json:"type"`
+	Visibility string `json:"visibility"`
+	Name       string `json:"name"`
+}
+type addConvUserReq struct {
+	EmailOrUsername string `json:"email_or_username"`
+}
