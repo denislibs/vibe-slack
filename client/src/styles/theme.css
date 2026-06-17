@@ -1,0 +1,29 @@
+:root {
+  --radius: 8px; --radius-sm: 6px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px;
+  --font: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+  --transition: 140ms ease;
+}
+:root, [data-theme="dark"] {
+  --rail-bg:#15101a; --sidebar-bg:#1a1320; --sidebar-text:#cfc3d6; --sidebar-muted:#9b8fa6;
+  --sidebar-active-bg:#5b2e91; --sidebar-active-text:#fff; --sidebar-hover:rgba(255,255,255,.06);
+  --main-bg:#1a1d21; --text:#e8e8e9; --text-muted:#9a9b9e; --border:#2c2d30;
+  --accent:#7c3aed; --accent-text:#fff; --accent-hover:#6d28d9; --composer-bg:#222529;
+  --topbar-bg:#3a1d4d; --topbar-text:#efeaf3; --danger:#e01e5a; --input-bg:#222529;
+}
+[data-theme="light"] {
+  --rail-bg:#3f0e40; --sidebar-bg:#4a154b; --sidebar-text:#e8d9ea; --sidebar-muted:#bda9bf;
+  --sidebar-active-bg:#1164a3; --sidebar-active-text:#fff; --sidebar-hover:rgba(255,255,255,.10);
+  --main-bg:#fff; --text:#1d1c1d; --text-muted:#616061; --border:#e2e2e2;
+  --accent:#007a5a; --accent-text:#fff; --accent-hover:#148567; --composer-bg:#fff;
+  --topbar-bg:#350d36; --topbar-text:#f4ecf4; --danger:#e01e5a; --input-bg:#fff;
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: var(--font); background: var(--main-bg); color: var(--text);
+  transition: background var(--transition), color var(--transition);
+}
+button { font-family: inherit; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
