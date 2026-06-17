@@ -31,9 +31,17 @@ export class KTVerifier {
       throw new KTNotPublished(`no KT record for ${identity}`);
     }
     if (!(await verifySTHSignature(this.pub, rec.sth))) throw new KTInvalidSTH("bad STH signature");
-    // monotonicity: the log must not rewind/fork between observations
-    if (this.trusted && this.trusted.treeSize <= rec.sth.treeSize) {
-      if (this.trusted.treeSize < rec.sth.treeSize) {
+    // monotonicity: an append-only log can only grow. Reject a smaller tree
+    // (rewind/rollback to a stale, possibly since-rotated key set), require a
+    // consistency proof when it grows, and reject a divergent root at equal size.
+    if (this.trusted) {
+      if (rec.sth.treeSize < this.trusted.treeSize) {
+        throw new KTForked("STH tree size went backwards (rewind)");
+      } else if (rec.sth.treeSize === this.trusted.treeSize) {
+        if (!eqBytes(this.trusted.rootHash, rec.sth.rootHash)) {
+          throw new KTForked("same tree size, different root");
+        }
+      } else {
         const proof = await this.api.consistency(token, this.trusted.treeSize, rec.sth.treeSize);
         if (
           !verifyConsistency(
@@ -46,16 +54,16 @@ export class KTVerifier {
         ) {
           throw new KTForked("consistency check failed");
         }
-      } else if (!eqBytes(this.trusted.rootHash, rec.sth.rootHash)) {
-        throw new KTForked("same tree size, different root");
       }
     }
-    this.trusted = rec.sth;
     if (!verifyInclusion(leafHash(rec.deviceSet), rec.leafIndex, rec.sth.treeSize, rec.auditPath, rec.sth.rootHash)) {
       throw new KTInvalidInclusion("inclusion proof failed");
     }
     const parsed = parseCanonicalLeaf(rec.deviceSet);
     if (parsed.identity !== identity) throw new KTIdentityMismatch(`leaf identity ${parsed.identity} != ${identity}`);
+    // Advance trust only after the STH is fully validated AND this leaf's
+    // inclusion/identity check off the same head — never on a partial failure.
+    this.trusted = rec.sth;
     return parsed.keys;
   }
 }

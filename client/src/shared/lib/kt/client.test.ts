@@ -128,6 +128,16 @@ describe("KTVerifier.verifyIdentity (interop fixture)", () => {
     expect(keys.length).toBeGreaterThan(0);
   });
 
+  it("rejects a rewind: a smaller validly-signed tree after a larger one => KTForked", async () => {
+    const recTo = toRecord(vectors.lookup); // size 5
+    const recFrom = toRecord(vectors.lookup_from); // size 3, validly signed + included
+    const v = new KTVerifier(stubApi([recTo, recFrom]));
+    await v.verifyIdentity("tok", vectors.lookup.identity); // trusted = size 5
+    await expect(v.verifyIdentity("tok", vectors.lookup_from.identity)).rejects.toBeInstanceOf(
+      KTForked,
+    );
+  });
+
   it("rejects a fork: validly-signed STH, same tree size, different root => KTForked", async () => {
     const recTo = toRecord(vectors.lookup); // seeds trusted at size 5
     // Second observation: same tree size, a DIFFERENT root, with a real signature
