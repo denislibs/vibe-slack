@@ -10,8 +10,7 @@ export const AuthPage: Component<{
 }> = (props) => (
   <div class={s.page}>
     <div class={s.card}>
-      <p class={s.mark}>Messenger</p>
-      <h1 class={s.title}>Sign in</h1>
+      <h1 class={s.title}>Messenger</h1>
       <LoginForm onLogin={props.onLogin} onRegister={props.onRegister} error={props.error} busy={props.busy} />
     </div>
   </div>

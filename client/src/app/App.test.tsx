@@ -73,7 +73,7 @@ describe("App auth gate", () => {
 
   it("shows the auth page when anonymous", () => {
     const { getByText } = render(() => <App {...base(createSessionStore())} />);
-    expect(getByText("Sign in")).toBeTruthy();
+    expect(getByText("Messenger")).toBeTruthy();
   });
 
   it("shows the chat when onboarded", () => {

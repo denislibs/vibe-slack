@@ -20,11 +20,19 @@ describe("AuthPage", () => {
     const { getByLabelText, getByText } = render(() => (
       <AuthPage onLogin={vi.fn()} onRegister={onRegister} error="" busy={false} />
     ));
+    fireEvent.click(getByText("Register")); // switch to the register tab (reveals Username)
     fireEvent.input(getByLabelText("Email"), { target: { value: "a@corp" } });
     fireEvent.input(getByLabelText("Username"), { target: { value: "alice" } });
     fireEvent.input(getByLabelText("Password"), { target: { value: "pw" } });
-    fireEvent.click(getByText("Register"));
+    fireEvent.click(getByText("Create account"));
     expect(onRegister).toHaveBeenCalledWith("a@corp", "alice", "pw");
+  });
+
+  it("hides the username field in sign-in mode", () => {
+    const { queryByLabelText } = render(() => (
+      <AuthPage onLogin={vi.fn()} onRegister={vi.fn()} error="" busy={false} />
+    ));
+    expect(queryByLabelText("Username")).toBeNull();
   });
 
   it("shows an error message", () => {
