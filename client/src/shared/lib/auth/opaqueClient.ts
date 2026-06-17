@@ -30,7 +30,12 @@ export async function initOpaque(
       opaqueLoginKE1: g.opaqueLoginKE1.bind(globalThis),
       opaqueLoginKE3: g.opaqueLoginKE3.bind(globalThis),
     };
-  })();
+  })().catch((e) => {
+    // Don't cache a rejected load — a transient wasm fetch/run failure would
+    // otherwise wedge auth permanently. Reset so the next call retries.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 
