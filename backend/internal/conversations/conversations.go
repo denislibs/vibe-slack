@@ -82,8 +82,13 @@ func (s *Service) CreateDM(ctx context.Context, callerID, wsID, emailOrUsername 
 		return nil, false, ErrInvalid
 	}
 	if err := s.requireWSMember(ctx, wsID, target.ID); err != nil {
-		// target not in this workspace → invalid request (don't leak as not-member of caller)
-		return nil, false, ErrInvalid
+		// Target isn't in this workspace. Return the SAME error as "no such user" so a
+		// caller can't distinguish a real account in another tenant from a non-existent
+		// one — that difference would be a cross-tenant enumeration oracle.
+		if errors.Is(err, ErrNotMember) {
+			return nil, false, store.ErrNotFound
+		}
+		return nil, false, err
 	}
 	return s.repo.GetOrCreateDM(ctx, newGroupID(), wsID, callerID, target.ID)
 }
@@ -106,7 +111,10 @@ func (s *Service) visibleTo(ctx context.Context, callerID string, c *store.Conve
 	}
 	if c.Type == "channel" && c.Visibility == "public" {
 		if err := s.requireWSMember(ctx, c.WorkspaceID, callerID); err != nil {
-			return false, nil
+			if errors.Is(err, ErrNotMember) {
+				return false, nil // not a workspace member → not visible
+			}
+			return false, err // propagate real errors instead of masking them as 404
 		}
 		return true, nil
 	}

@@ -131,8 +131,8 @@ func TestCreateDMAuthz(t *testing.T) {
 	if _, _, err := svc.CreateDM(ctx, "owner", "w1", "owner"); !errors.Is(err, ErrInvalid) {
 		// resolving "owner" — not in users map → ErrNotFound; but self-dm guard should also apply.
 	}
-	if _, _, err := svc.CreateDM(ctx, "owner", "w1", "ext"); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("target not WS member → ErrInvalid, got %v", err)
+	if _, _, err := svc.CreateDM(ctx, "owner", "w1", "ext"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("target not WS member → ErrNotFound (no cross-tenant oracle), got %v", err)
 	}
 	if _, _, err := svc.CreateDM(ctx, "owner", "w1", "ghost"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("unknown target → ErrNotFound, got %v", err)
