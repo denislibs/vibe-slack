@@ -67,6 +67,7 @@ export function bootstrap(deviceName: string) {
   const crypto: CryptoPort = {
     encrypt: (g, pt) => cryptoClient.encrypt(g, pt),
     decrypt: (g, msg) => cryptoClient.decrypt(g, msg),
+    joinFromWelcome: (w) => cryptoClient.joinFromWelcome(w),
   };
 
   const orchestrator = createOrchestrator({ protocol, crypto, conversation, connection });

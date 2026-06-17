@@ -19,6 +19,7 @@ function fakes() {
   const crypto = {
     decrypt: vi.fn(async (_group: string, _ct: Uint8Array) => new TextEncoder().encode("hello")),
     encrypt: vi.fn(async (_group: string, _pt: Uint8Array) => new Uint8Array([1, 2, 3])),
+    joinFromWelcome: vi.fn(async (_welcome: Uint8Array) => {}),
   };
   return { protocol, crypto, sent, acked, fire: (m: MessageFrame) => onMsg(m), fireStatus: (s: string) => onStatus(s) };
 }
@@ -36,6 +37,35 @@ describe("orchestrator", () => {
 
     expect(conv.messages("g1").map((m) => m.text)).toEqual(["hello"]);
     expect(f.acked).toContainEqual({ g: "g1", s: 4 });
+  });
+
+  it("inbound mls-commit frame → crypto.decrypt (merge) → ack, no store write", async () => {
+    const f = fakes();
+    const conv = createConversationStore();
+    createOrchestrator({ protocol: f.protocol as any, crypto: f.crypto as any, conversation: conv, connection: createConnectionStore() });
+
+    f.fire({ type: "message", group_id: "g1", seq: 7, sender_device: "carol", content_type: "mls-commit", ciphertext: btoa("commitbytes"), server_ts: 0 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(f.crypto.decrypt).toHaveBeenCalledWith("g1", expect.any(Uint8Array));
+    expect(conv.messages("g1")).toEqual([]);
+    expect(f.acked).toContainEqual({ g: "g1", s: 7 });
+  });
+
+  it("inbound mls-welcome frame → crypto.joinFromWelcome → ack, no store write, no decrypt", async () => {
+    const f = fakes();
+    const conv = createConversationStore();
+    createOrchestrator({ protocol: f.protocol as any, crypto: f.crypto as any, conversation: conv, connection: createConnectionStore() });
+
+    f.fire({ type: "message", group_id: "g2", seq: 3, sender_device: "alice", content_type: "mls-welcome", ciphertext: btoa("welcomebytes"), server_ts: 0 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(f.crypto.joinFromWelcome).toHaveBeenCalledWith(expect.any(Uint8Array));
+    expect(f.crypto.decrypt).not.toHaveBeenCalled();
+    expect(conv.messages("g2")).toEqual([]);
+    expect(f.acked).toContainEqual({ g: "g2", s: 3 });
   });
 
   it("status events update the connection store", () => {

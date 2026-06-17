@@ -1,4 +1,5 @@
 import type { MessageFrame } from "../shared/api/ds";
+import { CONTENT_TYPE } from "../shared/api/ds";
 import type { ConversationStore } from "../entities/conversation/store";
 import type { ConnectionStore, ConnStatus } from "../entities/connection/store";
 
@@ -13,6 +14,7 @@ export interface ProtocolPort {
 export interface CryptoPort {
   encrypt(groupID: string, plaintext: Uint8Array): Promise<Uint8Array>;
   decrypt(groupID: string, ciphertext: Uint8Array): Promise<Uint8Array>;
+  joinFromWelcome(welcome: Uint8Array): Promise<void>;
 }
 
 export interface OrchestratorDeps {
@@ -43,11 +45,22 @@ export function createOrchestrator(deps: OrchestratorDeps) {
   protocol.onMessage((m) => {
     void (async () => {
       try {
-        const plaintext = await crypto.decrypt(m.group_id, b64ToBytes(m.ciphertext));
-        if (plaintext.length > 0) {
-          conversation.addMessage(m.group_id, {
-            seq: m.seq, sender: m.sender_device, text: new TextDecoder().decode(plaintext),
-          });
+        const bytes = b64ToBytes(m.ciphertext);
+        if (m.content_type === CONTENT_TYPE.welcome) {
+          // A Welcome admits this device to the group; no store write.
+          await crypto.joinFromWelcome(bytes);
+        } else if (m.content_type === CONTENT_TYPE.commit) {
+          // An MLS commit advances the group epoch. decrypt merges it and
+          // returns empty bytes for handshake frames; nothing to store.
+          await crypto.decrypt(m.group_id, bytes);
+        } else {
+          // Application message: decrypt and surface to the conversation store.
+          const plaintext = await crypto.decrypt(m.group_id, bytes);
+          if (plaintext.length > 0) {
+            conversation.addMessage(m.group_id, {
+              seq: m.seq, sender: m.sender_device, text: new TextDecoder().decode(plaintext),
+            });
+          }
         }
         protocol.ack(m.group_id, m.seq);
       } catch {
@@ -62,7 +75,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
       const ct = await crypto.encrypt(groupID, new TextEncoder().encode(text));
       protocol.send({
         clientMsgId: randomId(), groupId: groupID,
-        contentType: "application", ciphertext: bytesToB64(ct),
+        contentType: CONTENT_TYPE.app, ciphertext: bytesToB64(ct),
       });
     },
   };

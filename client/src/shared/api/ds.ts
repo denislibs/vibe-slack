@@ -8,3 +8,14 @@ export type MessageFrame = { type: "message"; group_id: string; seq: number; sen
 export type ErrorFrame = { type: "error"; code: string; message: string };
 
 export type InboundFrame = SentFrame | MessageFrame | ErrorFrame;
+
+// Frame content_type discriminators shared by producers (add-member / join) and
+// the orchestrator's inbound dispatch, so both sides agree on the wire string.
+// `app` carries an encrypted application message (decrypt → conversation store);
+// `commit` carries an MLS commit (decrypt to merge, no store write); `welcome`
+// carries an MLS Welcome (joinFromWelcome).
+export const CONTENT_TYPE = {
+  app: "application",
+  commit: "mls-commit",
+  welcome: "mls-welcome",
+} as const;
