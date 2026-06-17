@@ -71,25 +71,38 @@ func (r *Relay) Tick(ctx context.Context) error {
 		return nil
 	}
 
+	// Append all leaves AND mark their outbox rows relayed in ONE transaction so the
+	// batch is all-or-nothing: if Tick errors mid-loop the tx rolls back and a retry
+	// reprocesses cleanly (no duplicate leaves / inflated versions).
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	for _, e := range events {
 		keys, err := r.devices.ActiveSigningKeys(ctx, e.userID)
 		if err != nil {
 			return err
 		}
-		maxV, err := r.kt.MaxVersion(ctx, e.userID)
+		maxV, err := r.kt.MaxVersionTx(ctx, tx, e.userID)
 		if err != nil {
 			return err
 		}
 		version := maxV + 1
 		canonical := CanonicalLeaf(e.userID, version, keys)
-		if _, err := r.kt.AppendLeaf(ctx, e.userID, version, canonical, LeafHash(canonical)); err != nil {
+		if _, err := r.kt.AppendLeafTx(ctx, tx, e.userID, version, canonical, LeafHash(canonical)); err != nil {
 			return err
 		}
-		if _, err := conn.Exec(ctx, `UPDATE kt_outbox SET relayed_at=now() WHERE id=$1`, e.id); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE kt_outbox SET relayed_at=now() WHERE id=$1`, e.id); err != nil {
 			return err
 		}
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 
+	// Issue a fresh STH over the new tree size (after the batch is durably committed).
 	var size int64
 	if err := conn.QueryRow(ctx, `SELECT COUNT(*) FROM kt_leaves`).Scan(&size); err != nil {
 		return err

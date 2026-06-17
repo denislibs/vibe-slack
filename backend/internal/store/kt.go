@@ -59,6 +59,29 @@ func (r *KTRepo) MaxVersion(ctx context.Context, identity string) (int64, error)
 	return v, err
 }
 
+// AppendLeafTx appends a leaf within the caller's transaction (used by the relay to
+// batch leaf appends + outbox marking atomically). Returns the assigned leaf_index.
+func (r *KTRepo) AppendLeafTx(ctx context.Context, tx pgx.Tx, identity string, version int64, deviceSet, leafHash []byte) (int64, error) {
+	var idx int64
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(leaf_index)+1, 0) FROM kt_leaves`).Scan(&idx); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO kt_leaves (leaf_index, identity, version, device_set, leaf_hash) VALUES ($1,$2,$3,$4,$5)`,
+		idx, identity, version, deviceSet, leafHash); err != nil {
+		return 0, err
+	}
+	return idx, nil
+}
+
+// MaxVersionTx reads the identity's current max version within the caller's tx, so
+// it observes leaves appended earlier in the same batch.
+func (r *KTRepo) MaxVersionTx(ctx context.Context, tx pgx.Tx, identity string) (int64, error) {
+	var v int64
+	err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) FROM kt_leaves WHERE identity=$1`, identity).Scan(&v)
+	return v, err
+}
+
 // LeafHashes returns the first `size` leaf hashes in index order.
 func (r *KTRepo) LeafHashes(ctx context.Context, size int64) ([][]byte, error) {
 	rows, err := r.pool.Query(ctx,

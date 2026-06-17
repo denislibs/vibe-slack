@@ -86,3 +86,33 @@ func TestRelayBuildsLeavesAndSTH(t *testing.T) {
 		t.Fatalf("expected version 3 after revoke, got %d", leaf3.Version)
 	}
 }
+
+func TestRelayBatchIsAllOrNothing(t *testing.T) {
+	ctx := context.Background()
+	pool := newPool(t)
+	users := store.NewUserRepo(pool)
+	devices := store.NewDeviceRepo(pool)
+	kt := store.NewKTRepo(pool)
+	_, priv, _ := ed25519.GenerateKey(rand.Reader)
+	relay := NewRelay(pool, kt, store.NewDeviceRepo(pool), NewSTHSigner(priv))
+
+	u, _ := users.Create(ctx, "atomic@corp", []byte("rec"))
+	devices.Enroll(ctx, u.ID, []byte("k1"), "a")
+	devices.Enroll(ctx, u.ID, []byte("k2"), "b")
+	devices.Enroll(ctx, u.ID, []byte("k3"), "c")
+	if err := relay.Tick(ctx); err != nil {
+		t.Fatalf("tick: %v", err)
+	}
+	// Exactly one leaf per relayed event; every outbox row marked.
+	var leafCount, unrelayed int
+	pool.QueryRow(ctx, `SELECT count(*) FROM kt_leaves`).Scan(&leafCount)
+	pool.QueryRow(ctx, `SELECT count(*) FROM kt_outbox WHERE relayed_at IS NULL`).Scan(&unrelayed)
+	if leafCount != 3 || unrelayed != 0 {
+		t.Fatalf("expected 3 leaves and 0 unrelayed, got leaves=%d unrelayed=%d", leafCount, unrelayed)
+	}
+	// Versions are a clean monotonic 1..3 for the identity (no inflation/duplication).
+	leaf, _ := kt.LatestLeafForIdentity(ctx, u.ID)
+	if leaf.Version != 3 {
+		t.Fatalf("expected version 3, got %d", leaf.Version)
+	}
+}
