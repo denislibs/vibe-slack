@@ -20,7 +20,7 @@ const loginStateTTL = 30 * time.Second
 
 // UserStore is the subset of the user repository the AS needs.
 type UserStore interface {
-	Create(ctx context.Context, email string, opaqueRecord []byte) (*store.User, error)
+	Create(ctx context.Context, email, username string, opaqueRecord []byte) (*store.User, error)
 	GetByEmail(ctx context.Context, email string) (*store.User, error)
 }
 
@@ -43,7 +43,9 @@ func (s *Service) RegisterStart(ctx context.Context, email string, regReq []byte
 }
 
 func (s *Service) RegisterFinish(ctx context.Context, email string, record []byte) error {
-	_, err := s.users.Create(ctx, email, record)
+	// TODO(WF-3): real username — passing email as username is a stopgap so the build
+	// compiles; WF-3 will add a real username param + validation to RegisterFinish.
+	_, err := s.users.Create(ctx, email, email, record)
 	return err
 }
 

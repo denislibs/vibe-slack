@@ -21,12 +21,12 @@ type fakeUserStore struct {
 
 func newFakeUsers() *fakeUserStore { return &fakeUserStore{byEmail: map[string]*store.User{}} }
 
-func (f *fakeUserStore) Create(_ context.Context, email string, rec []byte) (*store.User, error) {
+func (f *fakeUserStore) Create(_ context.Context, email, username string, rec []byte) (*store.User, error) {
 	if _, ok := f.byEmail[email]; ok {
 		return nil, store.ErrConflict
 	}
 	f.nextID++
-	u := &store.User{ID: string(rune('a' + f.nextID)), Email: email, OpaqueRecord: rec}
+	u := &store.User{ID: string(rune('a' + f.nextID)), Email: email, Username: username, OpaqueRecord: rec}
 	f.byEmail[email] = u
 	return u, nil
 }
