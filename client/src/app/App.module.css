@@ -1,0 +1,24 @@
+/* Cross-fade (+ subtle slide) between the auth / workspace / chat gate screens. */
+.view {
+  height: 100%;
+}
+:global(.fade-enter-active),
+:global(.fade-exit-active) {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+:global(.fade-enter) {
+  opacity: 0;
+  transform: translateY(6px) scale(0.995);
+}
+:global(.fade-enter-to) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+:global(.fade-exit) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+:global(.fade-exit-to) {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.995);
+}

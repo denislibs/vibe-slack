@@ -17,3 +17,22 @@
   padding: var(--space-5);
   min-width: 400px;
 }
+
+/* Enter (and exit) animation: backdrop fades, panel scales + fades. ~140ms. */
+:global(.modal-enter-active),
+:global(.modal-exit-active) {
+  transition: opacity 140ms ease;
+}
+:global(.modal-enter-active) .panel,
+:global(.modal-exit-active) .panel {
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+:global(.modal-enter),
+:global(.modal-exit-to) {
+  opacity: 0;
+}
+:global(.modal-enter) .panel,
+:global(.modal-exit-to) .panel {
+  opacity: 0;
+  transform: scale(0.96);
+}
