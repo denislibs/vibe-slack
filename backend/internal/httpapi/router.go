@@ -10,6 +10,7 @@ import (
 	"github.com/messenger/backend/internal/kt"
 	"github.com/messenger/backend/internal/session"
 	"github.com/messenger/backend/internal/store"
+	"github.com/messenger/backend/internal/workspace"
 )
 
 // NewRouter wires the auth endpoints. Device/keypackage routes are added later.
@@ -30,13 +31,14 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
 	rh := &rosterHandlers{roster: rosterRepo}
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
+	wh := &workspaceHandlers{svc: wsSvc}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -67,6 +69,14 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("GET /kt/key/{identity}", auth(http.HandlerFunc(kth.key)))
 	mux.Handle("GET /kt/proof/inclusion", auth(http.HandlerFunc(kth.inclusion)))
 	mux.Handle("GET /kt/proof/consistency", auth(http.HandlerFunc(kth.consistency)))
+
+	mux.Handle("POST /workspaces", auth(http.HandlerFunc(wh.create)))
+	mux.Handle("GET /workspaces", auth(http.HandlerFunc(wh.list)))
+	mux.Handle("GET /workspaces/{id}/members", auth(http.HandlerFunc(wh.members)))
+	mux.Handle("POST /workspaces/{id}/members", auth(http.HandlerFunc(wh.addMember)))
+	mux.Handle("PATCH /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.setRole)))
+	mux.Handle("DELETE /workspaces/{id}/members/me", auth(http.HandlerFunc(wh.leave)))
+	mux.Handle("DELETE /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.removeMember)))
 
 	return recoverMW(mux)
 }

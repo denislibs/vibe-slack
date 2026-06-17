@@ -67,7 +67,7 @@ func newKTServer(t *testing.T) (http.Handler, *ktEnv) {
 	ktSvc := kt.NewService(ktRepo)
 	relay := kt.NewRelay(pool, ktRepo, store.NewDeviceRepo(pool), kt.NewSTHSigner(ktPriv))
 
-	h := NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub)
+	h := NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil)
 	return h, &ktEnv{relay: relay}
 }
 

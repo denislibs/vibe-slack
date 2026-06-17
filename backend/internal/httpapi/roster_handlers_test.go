@@ -58,7 +58,7 @@ func newRosterServer(t *testing.T) (http.Handler, *store.RosterRepo) {
 	roster := store.NewRosterRepo(pool)
 	ktPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	ktSvc := kt.NewService(store.NewKTRepo(pool))
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub), roster
+	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil), roster
 }
 
 func TestRosterAddAndListMembers(t *testing.T) {
