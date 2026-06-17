@@ -74,25 +74,34 @@ export async function addMember(deps: AddMemberDeps, args: AddMemberArgs): Promi
   const { wsId, group, identity, currentMaxSeq } = args;
   const token = deps.token();
 
-  await conversations.addUser(token, group, identity);
-
+  // Verify-then-mutate: run the KT gate BEFORE granting any server-side membership.
+  // (If we added the user server-side first, a KT failure would leave them a
+  // conversation member with roster/group-info privileges despite never being
+  // cryptographically admitted.) key-material is fetched here too, so a KT failure
+  // throws before any state changes.
   const verified = await kt.verifyIdentity(token, identity);
   const material = await conversations.keyMaterial(token, wsId, identity);
 
-  // Hard KT gate: refuse the whole op before any MLS add if any device is unverified.
+  // Hard KT gate: refuse the whole op before any membership/MLS change if any
+  // device's signing key is not in the KT-verified set.
   for (const device of material) {
     if (!isVerified(device.signingPublicKey, verified)) {
       throw new UnverifiedDevice(device.deviceId);
     }
   }
 
+  // Gate passed — grant server membership, then MLS-add each device.
+  await conversations.addUser(token, group, identity);
+
   for (const device of material) {
     const { commit, welcome } = await crypto.addMember(group, device.keyPackage);
     await conversations.addDeviceToRoster(token, group, device.deviceId, currentMaxSeq);
     protocol.sendCommit(group, commit);
     protocol.sendWelcome(group, device.deviceId, welcome);
+    // Publish the refreshed GroupInfo after EACH successful add so the
+    // server-held GroupInfo never lags the group's actual epoch — even if a
+    // later device in this loop fails (the add is not atomic across devices).
+    const gi = await crypto.exportGroupInfo(group);
+    await conversations.putGroupInfo(token, group, gi);
   }
-
-  const gi = await crypto.exportGroupInfo(group);
-  await conversations.putGroupInfo(token, group, gi);
 }

@@ -36,13 +36,17 @@ describe("addMember", () => {
     expect(d.conversations.addDeviceToRoster).toHaveBeenCalledWith("TOK", "g1", "d2", 5);
     expect(d.protocol.sendCommit).toHaveBeenCalledTimes(2);
     expect(d.protocol.sendWelcome).toHaveBeenCalledTimes(2);
+    // GroupInfo is republished after EACH device add so it never lags the epoch.
+    expect(d.conversations.putGroupInfo).toHaveBeenCalledTimes(2);
     expect(d.conversations.putGroupInfo).toHaveBeenCalledWith("TOK", "g1", new Uint8Array([7]));
   });
 
-  it("REFUSES to add a device whose signing key is not KT-verified", async () => {
+  it("REFUSES to add a device whose signing key is not KT-verified, granting NO server membership", async () => {
     const d = deps([KEY_A]); // KEY_B missing → d2 unverified
     await expect(addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", currentMaxSeq: 5 }))
       .rejects.toBeInstanceOf(UnverifiedDevice);
     expect(d.crypto.addMember).not.toHaveBeenCalled(); // refuse BEFORE any MLS add
+    // verify-then-mutate: a KT-rejected user must NOT gain server-side membership.
+    expect(d.conversations.addUser).not.toHaveBeenCalled();
   });
 });
