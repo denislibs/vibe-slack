@@ -53,11 +53,15 @@ func (f *Fanout) loop() {
 func (f *Fanout) Subscribe(ctx context.Context, deviceID string) error {
 	f.mu.Lock()
 	n := f.subs[deviceID]
-	f.subs[deviceID] = n + 1
 	f.mu.Unlock()
 	if n == 0 {
-		return f.ps.Subscribe(ctx, channelPrefix+deviceID)
+		if err := f.ps.Subscribe(ctx, channelPrefix+deviceID); err != nil {
+			return err
+		}
 	}
+	f.mu.Lock()
+	f.subs[deviceID]++
+	f.mu.Unlock()
 	return nil
 }
 
