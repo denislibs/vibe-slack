@@ -18,16 +18,27 @@ type jsonSTH struct {
 	Signature string `json:"signature"`
 }
 
+type jsonLookup struct {
+	Identity  string   `json:"identity"`
+	LeafIndex int64    `json:"leaf_index"`
+	Version   int64    `json:"version"`
+	DeviceSet string   `json:"device_set"`
+	AuditPath []string `json:"audit_path"`
+	STH       jsonSTH  `json:"sth"`
+}
+
 type jsonVectors struct {
-	KTPublicKey string `json:"kt_public_key"`
-	Lookup      struct {
-		Identity  string   `json:"identity"`
-		LeafIndex int64    `json:"leaf_index"`
-		Version   int64    `json:"version"`
-		DeviceSet string   `json:"device_set"`
-		AuditPath []string `json:"audit_path"`
-		STH       jsonSTH  `json:"sth"`
-	} `json:"lookup"`
+	KTPublicKey string     `json:"kt_public_key"`
+	Lookup      jsonLookup `json:"lookup"`
+	// LookupFrom is a second lookup (leaf 0) proven against the earlier tree of
+	// size = consistency.from, so the TS verifier can seed a trusted STH that has
+	// a real inclusion proof before exercising the from->to consistency step.
+	LookupFrom jsonLookup `json:"lookup_from"`
+	// Fork is a validly-signed STH at the SAME tree size as lookup.sth but with a
+	// different root hash, modelling a split-view / forked log. It lets the TS
+	// verifier exercise the equal-size fork-detection branch with a signature that
+	// actually passes verification.
+	Fork        jsonSTH `json:"fork"`
 	Consistency struct {
 		From    int64    `json:"from"`
 		To      int64    `json:"to"`
@@ -96,6 +107,27 @@ func TestExportVectors(t *testing.T) {
 		Signature: b64(signer.Sign(fromSize, rootFrom)),
 	}
 
+	// Second lookup: leaf index 0 proven against the earlier tree of size fromSize.
+	const fromTargetIdx = 0
+	auditPathFrom, err := InclusionProof(hashes[:fromSize], fromTargetIdx)
+	if err != nil {
+		t.Fatalf("inclusion (from): %v", err)
+	}
+
+	// Forked tree: same size n, but one leaf differs, yielding a different root.
+	// Signed with the same key so the STH signature verifies; the verifier must
+	// reject it at the equal-size monotonicity check (different root, same size).
+	forkHashes := make([][]byte, n)
+	copy(forkHashes, hashes[:n])
+	forkCanon := CanonicalLeaf(identities[n-1], versions[n-1]+100, [][]byte{[]byte("dev-key-forked")})
+	forkHashes[n-1] = LeafHash(forkCanon)
+	forkRoot := Root(forkHashes)
+	forkSTH := jsonSTH{
+		TreeSize:  n,
+		RootHash:  b64(forkRoot),
+		Signature: b64(signer.Sign(n, forkRoot)),
+	}
+
 	var v jsonVectors
 	v.KTPublicKey = b64(pub)
 	v.Lookup.Identity = identities[targetIdx]
@@ -104,6 +136,13 @@ func TestExportVectors(t *testing.T) {
 	v.Lookup.DeviceSet = b64(canon[targetIdx])
 	v.Lookup.AuditPath = b64Slice(auditPath)
 	v.Lookup.STH = sthFinal
+	v.LookupFrom.Identity = identities[fromTargetIdx]
+	v.LookupFrom.LeafIndex = fromTargetIdx
+	v.LookupFrom.Version = versions[fromTargetIdx]
+	v.LookupFrom.DeviceSet = b64(canon[fromTargetIdx])
+	v.LookupFrom.AuditPath = b64Slice(auditPathFrom)
+	v.LookupFrom.STH = sthFrom
+	v.Fork = forkSTH
 	v.Consistency.From = fromSize
 	v.Consistency.To = n
 	v.Consistency.Proof = b64Slice(consProof)
