@@ -5,6 +5,7 @@ import { bootstrap } from "./app/bootstrap";
 const root = document.getElementById("root");
 if (root) {
   const { orchestrator, conversation, connection } = bootstrap("device");
+  // TODO: call orchestrator.connect(token) once a session token exists (OPAQUE-client plan).
   render(() => (
     <App
       groupId="g1"
