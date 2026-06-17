@@ -15,6 +15,9 @@ type Config struct {
 	OpaqueServerPrivateKey string
 	OpaqueServerPublicKey  string
 	OpaqueOPRFSeed         string
+
+	// KTSigningKey is the base64-encoded Ed25519 private key used to sign STHs.
+	KTSigningKey string
 }
 
 func Load() (*Config, error) {
@@ -25,6 +28,7 @@ func Load() (*Config, error) {
 		OpaqueServerPrivateKey: os.Getenv("OPAQUE_SERVER_PRIVATE_KEY"),
 		OpaqueServerPublicKey:  os.Getenv("OPAQUE_SERVER_PUBLIC_KEY"),
 		OpaqueOPRFSeed:         os.Getenv("OPAQUE_OPRF_SEED"),
+		KTSigningKey:           os.Getenv("KT_SIGNING_KEY"),
 	}
 	for k, v := range map[string]string{
 		"DATABASE_URL":              c.DatabaseURL,
@@ -32,6 +36,7 @@ func Load() (*Config, error) {
 		"OPAQUE_SERVER_PRIVATE_KEY": c.OpaqueServerPrivateKey,
 		"OPAQUE_SERVER_PUBLIC_KEY":  c.OpaqueServerPublicKey,
 		"OPAQUE_OPRF_SEED":          c.OpaqueOPRFSeed,
+		"KT_SIGNING_KEY":            c.KTSigningKey,
 	} {
 		if v == "" {
 			return nil, fmt.Errorf("required env var %s is empty", k)

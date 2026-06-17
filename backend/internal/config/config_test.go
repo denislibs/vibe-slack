@@ -8,6 +8,7 @@ func TestLoadFromEnvDefaults(t *testing.T) {
 	t.Setenv("OPAQUE_SERVER_PRIVATE_KEY", "AAAA")
 	t.Setenv("OPAQUE_SERVER_PUBLIC_KEY", "BBBB")
 	t.Setenv("OPAQUE_OPRF_SEED", "CCCC")
+	t.Setenv("KT_SIGNING_KEY", "DDDD")
 
 	cfg, err := Load()
 	if err != nil {
