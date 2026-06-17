@@ -66,3 +66,43 @@ func TestPublishReachesSubscribedDevice(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 	}
 }
+
+func TestRefcountedSubscribeKeepsChannelUntilLastUnsub(t *testing.T) {
+	ctx := context.Background()
+	rdb, err := redis.NewClient(ctx, startRedis(t))
+	if err != nil {
+		t.Fatalf("redis: %v", err)
+	}
+	got := make(chan []byte, 4)
+	f := New(rdb, func(deviceID string, payload []byte) {
+		if deviceID == "devR" {
+			got <- payload
+		}
+	})
+	defer f.Close()
+
+	f.Subscribe(ctx, "devR")
+	f.Subscribe(ctx, "devR") // two local conns for same device
+	time.Sleep(100 * time.Millisecond)
+	f.Unsubscribe(ctx, "devR") // one leaves; channel must remain
+	time.Sleep(100 * time.Millisecond)
+
+	f.Publish(ctx, "devR", []byte("still-here"))
+	select {
+	case p := <-got:
+		if string(p) != "still-here" {
+			t.Fatalf("got %q", p)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("channel was unsubscribed too early (refcount bug)")
+	}
+
+	f.Unsubscribe(ctx, "devR") // last leaves; now unsubscribed
+	time.Sleep(100 * time.Millisecond)
+	f.Publish(ctx, "devR", []byte("gone"))
+	select {
+	case <-got:
+		t.Fatal("should not receive after last unsubscribe")
+	case <-time.After(500 * time.Millisecond):
+	}
+}

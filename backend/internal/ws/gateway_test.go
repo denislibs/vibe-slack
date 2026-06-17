@@ -139,6 +139,39 @@ func TestSendThenOtherDeviceReceives(t *testing.T) {
 	}
 }
 
+func TestReconnectSameDeviceStillReceives(t *testing.T) {
+	env := newEnv(t)
+	ctx := context.Background()
+	dev := "aaaaaaaa-1111-1111-1111-111111111111"
+	other := "bbbbbbbb-1111-1111-1111-111111111111"
+	tok, _ := env.sess.Issue(ctx, "u1", dev)
+	otherTok, _ := env.sess.Issue(ctx, "u2", other)
+	env.roster.AddMember(ctx, "g1", dev, 0)
+	env.roster.AddMember(ctx, "g1", other, 0)
+
+	// First connection for dev, then a SECOND connection for the same dev (reconnect).
+	c1 := dial(t, env, tok)
+	time.Sleep(100 * time.Millisecond)
+	c2 := dial(t, env, tok)
+	defer c2.Close(websocket.StatusNormalClosure, "")
+	time.Sleep(150 * time.Millisecond)
+	_ = c1 // old conn; its write pump exits when hub replaces its channel
+
+	// `other` sends to the group; the live dev connection (c2) must receive it,
+	// proving the reconnect did not unsubscribe dev's channel.
+	co := dial(t, env, otherTok)
+	defer co.Close(websocket.StatusNormalClosure, "")
+	time.Sleep(100 * time.Millisecond)
+	writeJSON(t, co, map[string]any{
+		"type": "send", "client_msg_id": "rc1", "group_id": "g1",
+		"content_type": "application", "ciphertext": []byte("after-reconnect"),
+	})
+	msg := readUntilType(t, c2, "message")
+	if msg["group_id"] != "g1" {
+		t.Fatalf("reconnected device did not receive fan-out: %v", msg)
+	}
+}
+
 func TestUnauthenticatedDialRejected(t *testing.T) {
 	env := newEnv(t)
 	url := "ws" + strings.TrimPrefix(env.server.URL, "http") + "/ws"

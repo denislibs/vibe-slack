@@ -29,8 +29,8 @@ func NewGateway(sess *session.Manager, d *delivery.Service, h *hub.Hub, f *fanou
 
 // Handle authenticates, upgrades, and runs the read/write pumps for one connection.
 func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if token == "" {
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !ok || token == "" {
 		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}
@@ -65,6 +65,10 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	writeCtx, cancelWrite := context.WithCancel(ctx)
 	defer cancelWrite()
 	go func() {
+		// Server-side keepalive: Ping is a write, so it MUST originate from this
+		// single write goroutine to preserve the single-writer invariant.
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-writeCtx.Done():
@@ -79,15 +83,26 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					return
 				}
+			case <-ticker.C:
+				pctx, cancel := context.WithTimeout(writeCtx, 10*time.Second)
+				err := c.Ping(pctx)
+				cancel()
+				if err != nil {
+					c.CloseNow() // dead peer; unblocks the read loop
+					return
+				}
 			}
 		}
 	}()
 
-	// Read pump.
+	// Read pump. Uses a connection-scoped context (no aggressive per-read deadline)
+	// so an idle but healthy client is not dropped. A dead connection is detected by
+	// the keepalive ping above, which closes the conn → Read errors → loop returns →
+	// the deferred cancelWrite stops the write goroutine and its ticker.
+	readCtx, cancelRead := context.WithCancel(context.Background())
+	defer cancelRead()
 	for {
-		rctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		_, data, err := c.Read(rctx)
-		cancel()
+		_, data, err := c.Read(readCtx)
 		if err != nil {
 			return
 		}
@@ -145,7 +160,13 @@ func (g *Gateway) handleFrame(ctx context.Context, deviceID string, data []byte)
 }
 
 // push delivers a server→client frame through the local hub (the write pump sends it).
-func (g *Gateway) push(deviceID string, v any) {
+//
+// Returns false if the device's buffer is full; the frame is dropped. This is safe
+// under the journal+cursor model — the client recovers dropped frames via sync. A
+// future hardening may close the connection with StatusTryAgainLater to prompt an
+// immediate reconnect+sync. The bool is returned (even though callers currently
+// ignore it) so the backpressure contract is explicit and future code can act on it.
+func (g *Gateway) push(deviceID string, v any) bool {
 	payload, _ := json.Marshal(v)
-	g.hub.Deliver(deviceID, payload)
+	return g.hub.Deliver(deviceID, payload)
 }
