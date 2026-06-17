@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/messenger/backend/internal/session"
 )
@@ -13,6 +14,22 @@ import (
 type ctxKey string
 
 const sessionCtxKey ctxKey = "session"
+
+const sessionCookie = "session"
+
+func setSessionCookie(w http.ResponseWriter, token string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: token, Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: http.SameSiteStrictMode, MaxAge: int((24 * time.Hour) / time.Second),
+	})
+}
+
+func clearSessionCookie(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: "", Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: http.SameSiteStrictMode, MaxAge: -1,
+	})
+}
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -41,12 +58,24 @@ type sessionWithToken struct {
 	Token   string
 }
 
+// tokenFromHTTP returns the session token from the Authorization: Bearer header,
+// falling back to the `session` cookie (set HttpOnly on login). Header wins.
+func tokenFromHTTP(r *http.Request) string {
+	authz := r.Header.Get("Authorization")
+	if t := strings.TrimPrefix(authz, "Bearer "); authz != "" && t != authz {
+		return t
+	}
+	if c, err := r.Cookie(sessionCookie); err == nil {
+		return c.Value
+	}
+	return ""
+}
+
 func authMW(sess *session.Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authz := r.Header.Get("Authorization")
-			token := strings.TrimPrefix(authz, "Bearer ")
-			if token == "" || token == authz {
+			token := tokenFromHTTP(r)
+			if token == "" {
 				writeError(w, http.StatusUnauthorized, "unauthorized", "missing bearer token")
 				return
 			}

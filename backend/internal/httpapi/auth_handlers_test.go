@@ -46,7 +46,7 @@ func newServer(t *testing.T) (http.Handler, *session.Manager) {
 	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	sess := session.NewManager(rdb, time.Hour)
 	svc := as.NewService(osrv, &memUsers{m: map[string]*store.User{}}, sess, rdb)
-	return NewRouter(svc, sess), sess
+	return NewRouter(svc, sess, false), sess
 }
 
 func postJSON(t *testing.T, h http.Handler, path string, body any, token string) *httptest.ResponseRecorder {
@@ -128,9 +128,38 @@ func TestFullOpaqueFlowOverHTTP(t *testing.T) {
 		t.Fatalf("unexpected login/finish body: %s", rec.Body)
 	}
 
+	// login/finish must set an HttpOnly, SameSite=Strict session cookie.
+	var sc *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "session" {
+			sc = c
+		}
+	}
+	if sc == nil || !sc.HttpOnly || sc.Value == "" {
+		t.Fatalf("expected HttpOnly session cookie, got %+v", sc)
+	}
+	if sc.SameSite != http.SameSiteStrictMode {
+		t.Fatalf("expected SameSite=Strict")
+	}
+
 	// authenticated session check works with the issued token
 	if serve(h, httptestNewGet("/auth/session", lf.SessionToken)).Code != http.StatusOK {
 		t.Fatal("expected 200 from /auth/session with valid token")
+	}
+
+	// logout must clear the session cookie.
+	logoutRec := postJSON(t, h, "/auth/logout", map[string]string{}, lf.SessionToken)
+	if logoutRec.Code != http.StatusOK {
+		t.Fatalf("logout: %d %s", logoutRec.Code, logoutRec.Body)
+	}
+	var cleared *http.Cookie
+	for _, c := range logoutRec.Result().Cookies() {
+		if c.Name == "session" {
+			cleared = c
+		}
+	}
+	if cleared == nil || (cleared.MaxAge >= 0 && cleared.Value != "") {
+		t.Fatalf("expected cleared session cookie on logout, got %+v", cleared)
 	}
 }
 

@@ -12,8 +12,9 @@ import (
 )
 
 type authHandlers struct {
-	svc  *as.Service
-	sess *session.Manager
+	svc          *as.Service
+	sess         *session.Manager
+	cookieSecure bool
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -111,6 +112,7 @@ func (h *authHandlers) loginFinish(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal", "login error")
 		return
 	}
+	setSessionCookie(w, token, h.cookieSecure)
 	writeJSON(w, http.StatusOK, loginFinishResp{SessionToken: token, DeviceEnrollRequired: enroll})
 }
 
@@ -122,11 +124,13 @@ func (h *authHandlers) session(w http.ResponseWriter, r *http.Request) {
 func (h *authHandlers) logout(w http.ResponseWriter, r *http.Request) {
 	swt := sessionFrom(r.Context())
 	_ = h.sess.Revoke(r.Context(), swt.Token)
+	clearSessionCookie(w, h.cookieSecure)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *authHandlers) logoutAll(w http.ResponseWriter, r *http.Request) {
 	swt := sessionFrom(r.Context())
 	_ = h.sess.RevokeAll(r.Context(), swt.Session.UserID)
+	clearSessionCookie(w, h.cookieSecure)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

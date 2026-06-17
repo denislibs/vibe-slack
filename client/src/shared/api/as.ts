@@ -10,13 +10,34 @@ export class AsClient {
   private async post<T>(path: string, body: unknown, token?: string): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await this.fetchFn(this.baseURL + path, { method: "POST", headers, body: JSON.stringify(body) });
+    const res = await this.fetchFn(this.baseURL + path, {
+      method: "POST", headers, body: JSON.stringify(body), credentials: "include",
+    });
     if (!res.ok) {
       let code = "error";
       try { code = ((await res.json()) as { error?: string }).error ?? code; } catch { /* ignore */ }
       throw new Error(`AS ${path} failed: ${res.status} ${code}`);
     }
     return (await res.json()) as T;
+  }
+
+  private async get<T>(path: string, token?: string): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await this.fetchFn(this.baseURL + path, { method: "GET", headers, credentials: "include" });
+    if (!res.ok) {
+      let code = "error";
+      try { code = ((await res.json()) as { error?: string }).error ?? code; } catch { /* ignore */ }
+      throw new Error(`AS ${path} failed: ${res.status} ${code}`);
+    }
+    return (await res.json()) as T;
+  }
+
+  // Probe the current session. Cookie-authed via credentials:"include"; the Bearer
+  // header is sent during a live session but is empty (and harmless) after a refresh.
+  // GET /auth/session — throws on 401 (no/expired session).
+  async session(token: string): Promise<{ user_id: string; device_id: string }> {
+    return this.get<{ user_id: string; device_id: string }>("/auth/session", token || undefined);
   }
 
   async registerStart(email: string, opaqueRegistrationRequest: string): Promise<string> {

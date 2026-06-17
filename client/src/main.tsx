@@ -13,7 +13,7 @@ const theme = createThemeStore();
 
 const root = document.getElementById("root");
 if (root) {
-  const { conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel } = bootstrap("device");
+  const { conversation, connection, session, workspace, workspaces, wsClient, authFlow, conversations, setUserLabel, restoreSession } = bootstrap("device");
   const [authError, setAuthError] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [userEmail, setUserEmail] = createSignal("");
@@ -43,6 +43,12 @@ if (root) {
         : "failed to add user");
     } finally { setBusy(false); }
   };
+  // Restore-on-boot: probe the HttpOnly `session` cookie. On success the session
+  // store flips to "onboarded" reactively → the App gate leaves the auth screen.
+  // `userEmail`/`userLabel` aren't known after a refresh (no localStorage), so the
+  // rail avatar shows "?" until the next login — acceptable for now.
+  void restoreSession();
+
   render(() => (
     <>
       <App

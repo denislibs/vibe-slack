@@ -30,6 +30,7 @@ export class KTClient {
     const res = await this.fetchFn(this.baseURL + path, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     if (!res.ok) throw new Error(`kt GET ${path} failed: ${res.status}`);
     return (await res.json()) as T;

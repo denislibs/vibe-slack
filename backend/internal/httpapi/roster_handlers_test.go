@@ -60,7 +60,7 @@ func newRosterServer(t *testing.T) (http.Handler, *store.RosterRepo) {
 	roster := store.NewRosterRepo(pool)
 	ktPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	ktSvc := kt.NewService(store.NewKTRepo(pool))
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil, nil, nil, nil, nil, nil, ""), roster
+	return NewRouterFull(svc, sess, false, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil, nil, nil, nil, nil, nil, ""), roster
 }
 
 // fakeRosterStore records calls so tests can assert the store was (or was not)
