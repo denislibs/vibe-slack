@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"log"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/messenger/backend/internal/httpapi"
 	"github.com/messenger/backend/internal/hub"
 	"github.com/messenger/backend/internal/keypackages"
+	"github.com/messenger/backend/internal/kt"
 	"github.com/messenger/backend/internal/opaque"
 	"github.com/messenger/backend/internal/platform/postgres"
 	"github.com/messenger/backend/internal/platform/redis"
@@ -83,7 +85,35 @@ func main() {
 	}
 	gw := ws.NewGateway(sess, deliverySvc, hubReg, fan, nodeID)
 
-	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo)
+	// Key Transparency: signer, service, and background relay.
+	ktPrivBytes, err := base64.StdEncoding.DecodeString(cfg.KTSigningKey)
+	if err != nil || len(ktPrivBytes) != ed25519.PrivateKeySize {
+		log.Fatalf("KT_SIGNING_KEY invalid: must be base64 of a %d-byte ed25519 private key", ed25519.PrivateKeySize)
+	}
+	ktPriv := ed25519.PrivateKey(ktPrivBytes)
+	ktPub := ktPriv.Public().(ed25519.PublicKey)
+	ktRepo := store.NewKTRepo(pool)
+	ktSvc := kt.NewService(ktRepo)
+	ktRelay := kt.NewRelay(pool, ktRepo, store.NewDeviceRepo(pool), kt.NewSTHSigner(ktPriv))
+
+	relayCtx, stopRelay := context.WithCancel(context.Background())
+	defer stopRelay()
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-relayCtx.Done():
+				return
+			case <-ticker.C:
+				if err := ktRelay.Tick(relayCtx); err != nil {
+					log.Printf("kt relay tick: %v", err)
+				}
+			}
+		}
+	}()
+
+	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub)
 	root := http.NewServeMux()
 	root.Handle("/", apiHandler)
 	root.HandleFunc("/ws", gw.Handle)
@@ -99,6 +129,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
+	stopRelay()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)

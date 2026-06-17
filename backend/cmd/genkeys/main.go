@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 
@@ -17,4 +19,8 @@ func main() {
 	fmt.Printf("OPAQUE_SERVER_PRIVATE_KEY=%s\n", enc(sk.Encode()))
 	fmt.Printf("OPAQUE_SERVER_PUBLIC_KEY=%s\n", enc(pk.Encode()))
 	fmt.Printf("OPAQUE_OPRF_SEED=%s\n", enc(seed))
+
+	ktPub, ktPriv, _ := ed25519.GenerateKey(rand.Reader)
+	fmt.Printf("KT_SIGNING_KEY=%s\n", base64.StdEncoding.EncodeToString(ktPriv))
+	fmt.Printf("# KT public key (give to clients): %s\n", base64.StdEncoding.EncodeToString(ktPub))
 }

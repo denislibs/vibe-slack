@@ -79,6 +79,26 @@ func (r *DeviceRepo) Revoke(ctx context.Context, userID, deviceID string) error 
 	return tx.Commit(ctx)
 }
 
+// ActiveSigningKeys returns the signing public keys of a user's active devices,
+// for the KT relay to snapshot the current device set.
+func (r *DeviceRepo) ActiveSigningKeys(ctx context.Context, userID string) ([][]byte, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT signing_public_key FROM devices WHERE user_id=$1 AND status='active' ORDER BY id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out [][]byte
+	for rows.Next() {
+		var k []byte
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		out = append(out, k)
+	}
+	return out, rows.Err()
+}
+
 func emitKTEvent(ctx context.Context, tx pgx.Tx, userID, eventType string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {

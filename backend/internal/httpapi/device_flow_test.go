@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"github.com/messenger/backend/internal/as"
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
+	"github.com/messenger/backend/internal/kt"
 	"github.com/messenger/backend/internal/opaque"
 	"github.com/messenger/backend/internal/platform/postgres"
 	"github.com/messenger/backend/internal/session"
@@ -51,7 +54,9 @@ func newFullServer(t *testing.T) http.Handler {
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
 	rl := session.NewRateLimiter(rdb, 1000, time.Minute)
 	roster := store.NewRosterRepo(pool)
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster)
+	ktPub, _, _ := ed25519.GenerateKey(rand.Reader)
+	ktSvc := kt.NewService(store.NewKTRepo(pool))
+	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub)
 }
 
 func registerAndLogin(t *testing.T, h http.Handler, email, password string) string {
