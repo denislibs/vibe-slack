@@ -16,7 +16,9 @@ export interface WorkspaceMember {
 // Typed client for the workspace endpoints. All calls carry the device-bound
 // session token as a Bearer header (same token the AS issues).
 export class WorkspaceClient {
-  constructor(private baseURL: string, private fetchFn: FetchFn = fetch) {}
+  // Default wraps fetch in an arrow so it's invoked unbound (calling native fetch as
+  // a method, this.fetchFn(...), throws "Illegal invocation").
+  constructor(private baseURL: string, private fetchFn: FetchFn = (...args) => fetch(...args)) {}
 
   private async call<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
     const init: RequestInit = {

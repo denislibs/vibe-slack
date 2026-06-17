@@ -22,7 +22,9 @@ function toSTH(j: { tree_size: number; root_hash: string; signature: string }): 
 
 // Typed client for the KT verifiable-log endpoints (Bearer session token).
 export class KTClient {
-  constructor(private baseURL: string, private fetchFn: FetchFn = fetch) {}
+  // Default wraps fetch in an arrow so it's invoked unbound (calling native fetch as
+  // a method, this.fetchFn(...), throws "Illegal invocation").
+  constructor(private baseURL: string, private fetchFn: FetchFn = (...args) => fetch(...args)) {}
 
   private async get<T>(token: string, path: string): Promise<T> {
     const res = await this.fetchFn(this.baseURL + path, {

@@ -42,7 +42,9 @@ function bytesToB64(bytes: Uint8Array): string {
 // Typed client for the conversation / key-material / group-info / compliance
 // endpoints. All calls carry the device-bound session token as a Bearer header.
 export class ConversationsClient {
-  constructor(private baseURL: string, private fetchFn: FetchFn = fetch) {}
+  // Default wraps fetch in an arrow so it's invoked unbound (calling native fetch as
+  // a method, this.fetchFn(...), throws "Illegal invocation").
+  constructor(private baseURL: string, private fetchFn: FetchFn = (...args) => fetch(...args)) {}
 
   private async call<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
     const init: RequestInit = {

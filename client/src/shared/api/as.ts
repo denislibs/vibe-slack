@@ -3,7 +3,9 @@ type FetchFn = typeof fetch;
 // Thin typed wrapper over the Authentication Service HTTP API. All OPAQUE byte fields
 // are base64 strings (matches the server contract).
 export class AsClient {
-  constructor(private baseURL: string, private fetchFn: FetchFn = fetch) {}
+  // Default wraps fetch in an arrow so it's invoked unbound (calling native fetch as
+  // a method, this.fetchFn(...), throws "Illegal invocation").
+  constructor(private baseURL: string, private fetchFn: FetchFn = (...args) => fetch(...args)) {}
 
   private async post<T>(path: string, body: unknown, token?: string): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };

@@ -17,7 +17,8 @@ services:
   backend:
     build: .
     depends_on: [postgres, redis]
+    env_file: [.env]
     environment:
       DATABASE_URL: postgres://as:as@postgres:5432/as?sslmode=disable
       REDIS_URL: redis://redis:6379/0
-    ports: ["8080:8080"]
+    ports: ["18080:8080"]
