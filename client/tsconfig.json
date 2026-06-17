@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
-    "types": ["vitest/globals"],
+    "types": ["vitest/globals", "node"],
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "noEmit": true
