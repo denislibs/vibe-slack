@@ -12,7 +12,7 @@ function fakes() {
   };
   const as: AsLike = {
     registerStart: vi.fn(async () => "RESP"),
-    registerFinish: vi.fn(async () => {}),
+    registerFinish: vi.fn(async (_email: string, _username: string, _record: string) => {}),
     loginStart: vi.fn(async () => ({ loginId: "L1", ke2: "KE2" })),
     loginFinish: vi.fn(async () => ({ sessionToken: "TOK", deviceEnrollRequired: true })),
   };
@@ -22,10 +22,10 @@ function fakes() {
 describe("authenticate", () => {
   it("register runs init→start→finalize→finish in order", async () => {
     const { opaque, as } = fakes();
-    await createAuthenticator(opaque, as).register("a@corp", "pw");
+    await createAuthenticator(opaque, as).register("a@corp", "alice", "pw");
     expect(as.registerStart).toHaveBeenCalledWith("a@corp", "REQ");
     expect(opaque.regFinalize).toHaveBeenCalledWith("f1", "RESP", SERVER_ID_B64);
-    expect(as.registerFinish).toHaveBeenCalledWith("a@corp", "RECORD");
+    expect(as.registerFinish).toHaveBeenCalledWith("a@corp", "alice", "RECORD");
   });
 
   it("login returns token + enroll flag", async () => {

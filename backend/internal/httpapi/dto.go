@@ -14,6 +14,7 @@ type registerStartResp struct {
 }
 type registerFinishReq struct {
 	Email                    string `json:"email"`
+	Username                 string `json:"username"`
 	OpaqueRegistrationRecord string `json:"opaque_registration_record"`
 }
 type loginStartReq struct {
@@ -76,4 +77,26 @@ type ktKeyResp struct {
 	DeviceSet string   `json:"device_set"`
 	AuditPath []string `json:"audit_path"`
 	STH       sthResp  `json:"sth"`
+}
+
+type createWorkspaceReq struct {
+	Name string `json:"name"`
+}
+type workspaceResp struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+	Role string `json:"role"`
+}
+type addWSMemberReq struct {
+	EmailOrUsername string `json:"email_or_username"`
+}
+type setWSRoleReq struct {
+	Role string `json:"role"`
+}
+type wsMemberResp struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
 }

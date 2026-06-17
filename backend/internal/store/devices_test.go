@@ -12,7 +12,7 @@ func TestDeviceEnrollWritesOutboxInSameTx(t *testing.T) {
 	users := NewUserRepo(pool)
 	devices := NewDeviceRepo(pool)
 
-	u, _ := users.Create(ctx, "dave@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "dave@corp", "dave", []byte("rec"))
 
 	dev, err := devices.Enroll(ctx, u.ID, []byte("signing-pub-key"), "laptop")
 	if err != nil {
@@ -51,8 +51,8 @@ func TestRevokeOtherUsersDeviceFails(t *testing.T) {
 	ctx := context.Background()
 	users := NewUserRepo(pool)
 	devices := NewDeviceRepo(pool)
-	owner, _ := users.Create(ctx, "owner@corp", []byte("r"))
-	attacker, _ := users.Create(ctx, "attacker@corp", []byte("r"))
+	owner, _ := users.Create(ctx, "owner@corp", "owner", []byte("r"))
+	attacker, _ := users.Create(ctx, "attacker@corp", "attacker", []byte("r"))
 	dev, _ := devices.Enroll(ctx, owner.ID, []byte("pub"), "laptop")
 	if err := devices.Revoke(ctx, attacker.ID, dev.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound revoking another user's device, got %v", err)

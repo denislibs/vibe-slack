@@ -56,7 +56,33 @@ func newFullServer(t *testing.T) http.Handler {
 	roster := store.NewRosterRepo(pool)
 	ktPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	ktSvc := kt.NewService(store.NewKTRepo(pool))
-	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub)
+	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil)
+}
+
+// usernameFromEmail derives a username valid under as.ValidateUsername
+// (lowercase letters, digits, underscore; 3-32 chars) from a test email.
+func usernameFromEmail(email string) string {
+	var b []rune
+	for _, r := range email {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b = append(b, r)
+		case r >= 'A' && r <= 'Z':
+			b = append(b, r+('a'-'A'))
+		case r == '@':
+			b = append(b, '_') // stop at domain via padding below; keep local part
+		}
+		if r == '@' {
+			break
+		}
+	}
+	for len(b) < 3 {
+		b = append(b, '_')
+	}
+	if len(b) > 32 {
+		b = b[:32]
+	}
+	return string(b)
 }
 
 func registerAndLogin(t *testing.T, h http.Handler, email, password string) string {
@@ -73,7 +99,7 @@ func registerAndLogin(t *testing.T, h http.Handler, email, password string) stri
 	regResp, _ := client.Deserialize.RegistrationResponse(respBytes)
 	record, _, _ := client.RegistrationFinalize(regResp, nil, []byte("messenger-as"))
 	postJSON(t, h, "/auth/register/finish",
-		map[string]string{"email": email, "opaque_registration_record": b64(record.Serialize())}, "")
+		map[string]string{"email": email, "username": usernameFromEmail(email), "opaque_registration_record": b64(record.Serialize())}, "")
 
 	client2, _ := cfg.Client()
 	ke1, _ := client2.GenerateKE1(pw)

@@ -15,6 +15,18 @@ describe("AuthPage", () => {
     expect(onLogin).toHaveBeenCalledWith("a@corp", "pw");
   });
 
+  it("submits email+username+password to onRegister", () => {
+    const onRegister = vi.fn();
+    const { getByLabelText, getByText } = render(() => (
+      <AuthPage onLogin={vi.fn()} onRegister={onRegister} error="" busy={false} />
+    ));
+    fireEvent.input(getByLabelText("Email"), { target: { value: "a@corp" } });
+    fireEvent.input(getByLabelText("Username"), { target: { value: "alice" } });
+    fireEvent.input(getByLabelText("Password"), { target: { value: "pw" } });
+    fireEvent.click(getByText("Register"));
+    expect(onRegister).toHaveBeenCalledWith("a@corp", "alice", "pw");
+  });
+
   it("shows an error message", () => {
     const { getByText } = render(() => (
       <AuthPage onLogin={vi.fn()} onRegister={vi.fn()} error="invalid email or password" busy={false} />

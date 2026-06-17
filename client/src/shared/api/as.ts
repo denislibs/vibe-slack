@@ -22,8 +22,8 @@ export class AsClient {
       "/auth/register/start", { email, opaque_registration_request: opaqueRegistrationRequest });
     return r.opaque_registration_response;
   }
-  async registerFinish(email: string, record: string): Promise<void> {
-    await this.post("/auth/register/finish", { email, opaque_registration_record: record });
+  async registerFinish(email: string, username: string, record: string): Promise<void> {
+    await this.post("/auth/register/finish", { email, username, opaque_registration_record: record });
   }
   async loginStart(email: string, ke1: string): Promise<{ loginId: string; ke2: string }> {
     const r = await this.post<{ login_id: string; ke2: string }>("/auth/login/start", { email, ke1 });

@@ -39,7 +39,7 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 	repo := NewUserRepo(pool)
 	ctx := context.Background()
 
-	u, err := repo.Create(ctx, "alice@corp", []byte("opaque-record"))
+	u, err := repo.Create(ctx, "alice@corp", "alice", []byte("opaque-record"))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestUserRepoCreateAndGet(t *testing.T) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 
-	if _, err := repo.Create(ctx, "alice@corp", []byte("x")); !errors.Is(err, ErrConflict) {
+	if _, err := repo.Create(ctx, "alice@corp", "alice-dup", []byte("x")); !errors.Is(err, ErrConflict) {
 		t.Fatalf("expected ErrConflict on duplicate email, got %v", err)
 	}
 }

@@ -13,7 +13,7 @@ func TestKeyPackageUploadConsumeExhaustLastResort(t *testing.T) {
 	devices := NewDeviceRepo(pool)
 	kp := NewKeyPackageRepo(pool)
 
-	u, _ := users.Create(ctx, "erin@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "erin@corp", "erin", []byte("rec"))
 	dev, _ := devices.Enroll(ctx, u.ID, []byte("pub"), "phone")
 
 	if err := kp.Upload(ctx, dev.ID, [][]byte{[]byte("otk-1"), []byte("otk-2")}, false); err != nil {
@@ -55,7 +55,7 @@ func TestConsumeRevokedDeviceReturnsNothing(t *testing.T) {
 	users := NewUserRepo(pool)
 	devices := NewDeviceRepo(pool)
 	kp := NewKeyPackageRepo(pool)
-	u, _ := users.Create(ctx, "gail@corp", []byte("r"))
+	u, _ := users.Create(ctx, "gail@corp", "gail", []byte("r"))
 	dev, _ := devices.Enroll(ctx, u.ID, []byte("pub"), "phone")
 	kp.Upload(ctx, dev.ID, [][]byte{[]byte("otk-1")}, false)
 	kp.Upload(ctx, dev.ID, [][]byte{[]byte("lr")}, true)

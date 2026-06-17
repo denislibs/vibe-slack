@@ -11,18 +11,18 @@ export interface OpaqueOpsLike {
 }
 export interface AsLike {
   registerStart(email: string, request: string): Promise<string>;
-  registerFinish(email: string, record: string): Promise<void>;
+  registerFinish(email: string, username: string, record: string): Promise<void>;
   loginStart(email: string, ke1: string): Promise<{ loginId: string; ke2: string }>;
   loginFinish(loginId: string, ke3: string): Promise<{ sessionToken: string; deviceEnrollRequired: boolean }>;
 }
 
 export function createAuthenticator(opaque: OpaqueOpsLike, as: AsLike) {
   return {
-    async register(email: string, password: string): Promise<void> {
+    async register(email: string, username: string, password: string): Promise<void> {
       const init = opaque.regInit(pwB64(password));
       const response = await as.registerStart(email, init.request);
       const fin = opaque.regFinalize(init.flowId, response, SERVER_ID_B64);
-      await as.registerFinish(email, fin.record);
+      await as.registerFinish(email, username, fin.record);
     },
     async login(email: string, password: string): Promise<{ sessionToken: string; deviceEnrollRequired: boolean }> {
       const ke1 = opaque.loginKE1(pwB64(password));

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/messenger/backend/internal/opaque"
@@ -16,11 +17,23 @@ import (
 
 var ErrAuthFailed = errors.New("as: authentication failed")
 
+var ErrInvalidUsername = errors.New("as: invalid username")
+
+var usernameRe = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
+
+// ValidateUsername enforces the public username format (lowercase, digits, underscore).
+func ValidateUsername(s string) error {
+	if !usernameRe.MatchString(s) {
+		return ErrInvalidUsername
+	}
+	return nil
+}
+
 const loginStateTTL = 30 * time.Second
 
 // UserStore is the subset of the user repository the AS needs.
 type UserStore interface {
-	Create(ctx context.Context, email string, opaqueRecord []byte) (*store.User, error)
+	Create(ctx context.Context, email, username string, opaqueRecord []byte) (*store.User, error)
 	GetByEmail(ctx context.Context, email string) (*store.User, error)
 }
 
@@ -42,8 +55,11 @@ func (s *Service) RegisterStart(ctx context.Context, email string, regReq []byte
 	return s.opaque.RegistrationResponse(regReq, credID(email))
 }
 
-func (s *Service) RegisterFinish(ctx context.Context, email string, record []byte) error {
-	_, err := s.users.Create(ctx, email, record)
+func (s *Service) RegisterFinish(ctx context.Context, email, username string, record []byte) error {
+	if err := ValidateUsername(username); err != nil {
+		return err
+	}
+	_, err := s.users.Create(ctx, email, username, record)
 	return err
 }
 

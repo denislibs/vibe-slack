@@ -17,7 +17,22 @@ describe("AsClient", () => {
       "POST /auth/register/finish": { status: 200, body: { ok: true } },
     }) as any);
     expect(await as.registerStart("a@corp", "REQ")).toBe("RESP");
-    await as.registerFinish("a@corp", "RECORD");
+    await as.registerFinish("a@corp", "alice", "RECORD");
+  });
+
+  it("register finish posts email, username and record", async () => {
+    const fetchFn = mockFetch({
+      "POST /auth/register/finish": { status: 200, body: { ok: true } },
+    });
+    const as = new AsClient("http://as.test", fetchFn as any);
+    await as.registerFinish("a@corp", "alice", "RECORD");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(new URL(url as string).pathname).toBe("/auth/register/finish");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      email: "a@corp",
+      username: "alice",
+      opaque_registration_record: "RECORD",
+    });
   });
 
   it("login finish returns token + enroll flag", async () => {
