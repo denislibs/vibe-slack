@@ -98,6 +98,21 @@ impl WasmEngine {
         self.inner.join_from_welcome(&welcome).map_err(to_js)
     }
 
+    /// Export the group's GroupInfo (with public ratchet tree) for joining a
+    /// PUBLIC channel via external commit.
+    pub fn export_group_info(&self, group_id: &str) -> Result<Vec<u8>, JsError> {
+        self.inner
+            .export_group_info(group_id.as_bytes())
+            .map_err(to_js)
+    }
+
+    /// Join a PUBLIC channel via external commit; returns the commit to fan out.
+    pub fn join_by_external_commit(&mut self, group_info: Vec<u8>) -> Result<Vec<u8>, JsError> {
+        self.inner
+            .join_by_external_commit(&group_info)
+            .map_err(to_js)
+    }
+
     pub fn encrypt(&mut self, group_id: &str, plaintext: Vec<u8>) -> Result<Vec<u8>, JsError> {
         self.inner
             .encrypt(group_id.as_bytes(), &plaintext)
@@ -148,5 +163,26 @@ mod wasm_api_tests {
         let ct = alice.encrypt("team-1", b"hi".to_vec()).unwrap();
         let pt = bob.decrypt("team-1", ct).unwrap();
         assert_eq!(pt, b"hi");
+    }
+
+    #[test]
+    fn wasm_engine_joins_public_group_by_external_commit() {
+        let mut alice = WasmEngine::new("alice@corp");
+        let mut bob = WasmEngine::new("bob@corp");
+
+        alice.create_group("public-1").unwrap();
+        let gi = alice.export_group_info("public-1").unwrap();
+        assert!(!gi.is_empty());
+
+        let commit = bob.join_by_external_commit(gi).unwrap();
+        assert!(!commit.is_empty());
+
+        // Alice applies the external-commit; decrypt returns empty for commits.
+        let applied = alice.decrypt("public-1", commit).unwrap();
+        assert!(applied.is_empty());
+
+        let ct = alice.encrypt("public-1", b"hello bob".to_vec()).unwrap();
+        let pt = bob.decrypt("public-1", ct).unwrap();
+        assert_eq!(pt, b"hello bob");
     }
 }
