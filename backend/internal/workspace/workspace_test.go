@@ -145,3 +145,42 @@ func TestSetRoleAndRemoveAuthz(t *testing.T) {
 		t.Fatalf("admin leave: %v", err)
 	}
 }
+
+// Coverage for matrix cells the lifecycle test doesn't hit directly.
+func TestWorkspaceMatrixCoverage(t *testing.T) {
+	ctx := context.Background()
+	svc, repo, ws := setup()
+	repo.roles[ws]["admin1"] = store.RoleAdmin
+	repo.roles[ws]["mem1"] = store.RoleMember
+
+	// admin (not owner) can add a member
+	if _, err := svc.AddMember(ctx, "admin1", ws, "bob@corp"); err != nil {
+		t.Fatalf("admin add member: %v", err)
+	}
+	// member cannot change roles
+	if err := svc.SetRole(ctx, "mem1", ws, "bob", store.RoleAdmin); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("member set role forbidden, got %v", err)
+	}
+	// owner may remove an admin
+	if err := svc.RemoveMember(ctx, "owner", ws, "admin1"); err != nil {
+		t.Fatalf("owner remove admin: %v", err)
+	}
+	// non-member caller is rejected before any target work (RemoveMember)
+	if err := svc.RemoveMember(ctx, "stranger", ws, "mem1"); !errors.Is(err, ErrNotMember) {
+		t.Fatalf("stranger remove → ErrNotMember, got %v", err)
+	}
+	// member can leave; Members visible to a member; non-member Members → ErrNotMember
+	if err := svc.Leave(ctx, "mem1", ws); err != nil {
+		t.Fatalf("member leave: %v", err)
+	}
+	if _, err := svc.Members(ctx, "owner", ws); err != nil {
+		t.Fatalf("owner members: %v", err)
+	}
+	if _, err := svc.Members(ctx, "stranger", ws); !errors.Is(err, ErrNotMember) {
+		t.Fatalf("stranger members → ErrNotMember, got %v", err)
+	}
+	// empty workspace name → ErrInvalid
+	if _, err := svc.Create(ctx, "owner", "   "); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("empty name → ErrInvalid, got %v", err)
+	}
+}

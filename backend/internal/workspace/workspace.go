@@ -116,6 +116,11 @@ func (s *Service) RemoveMember(ctx context.Context, callerID, workspaceID, targe
 	if err != nil {
 		return err
 	}
+	// Reject non-privileged callers before touching the target — avoids an
+	// unnecessary lookup and any membership probing by plain members.
+	if callerRole != store.RoleOwner && callerRole != store.RoleAdmin {
+		return ErrForbidden
+	}
 	targetRole, err := s.repo.RoleOf(ctx, workspaceID, targetUserID)
 	if errors.Is(err, store.ErrNotFound) {
 		return store.ErrNotFound
@@ -124,16 +129,10 @@ func (s *Service) RemoveMember(ctx context.Context, callerID, workspaceID, targe
 		return err
 	}
 	if targetRole == store.RoleOwner {
-		return ErrForbidden
+		return ErrForbidden // owner cannot be removed
 	}
-	switch callerRole {
-	case store.RoleOwner:
-	case store.RoleAdmin:
-		if targetRole != store.RoleMember {
-			return ErrForbidden
-		}
-	default:
-		return ErrForbidden
+	if callerRole == store.RoleAdmin && targetRole != store.RoleMember {
+		return ErrForbidden // admins may remove only members
 	}
 	return s.repo.RemoveMember(ctx, workspaceID, targetUserID)
 }
