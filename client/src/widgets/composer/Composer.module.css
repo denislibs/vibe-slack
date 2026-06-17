@@ -1,22 +1,45 @@
-.composer {
+.outer {
+  padding: 0 20px 20px;
+}
+.box {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
-  background: var(--composer-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: var(--space-2);
+  background: var(--composer-bg);
+  padding: var(--space-2) 10px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-14);
+}
+.tool {
+  font-weight: 700;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+.tool i {
+  font-style: italic;
 }
 .input {
-  flex: 1;
   border: none;
   outline: none;
   background: transparent;
   color: var(--text);
   font-family: inherit;
-  font-size: 14px;
-  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-15);
+  width: 100%;
+  padding: var(--space-1) 0;
 }
 .input::placeholder {
   color: var(--text-muted);
+}
+.strip {
+  display: flex;
+  justify-content: flex-end;
 }

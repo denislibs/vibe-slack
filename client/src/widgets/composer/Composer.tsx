@@ -11,21 +11,30 @@ export const Composer: Component<{ onSend: (text: string) => void }> = (props) =
     setText("");
   };
   return (
-    <div class={s.composer}>
-      <input
-        class={s.input}
-        type="text"
-        value={text()}
-        placeholder="Message"
-        onInput={(e) => setText(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-      />
-      <Button variant="primary" onClick={submit}>Send</Button>
+    <div class={s.outer}>
+      <div class={s.box}>
+        <div class={s.toolbar} aria-hidden="true">
+          <span class={s.tool}>B</span>
+          <span class={s.tool}><i>I</i></span>
+          <span class={s.tool}>🔗</span>
+        </div>
+        <input
+          class={s.input}
+          type="text"
+          value={text()}
+          placeholder="Message"
+          onInput={(e) => setText(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <div class={s.strip}>
+          <Button variant="primary" onClick={submit} disabled={!text().trim()}>Send</Button>
+        </div>
+      </div>
     </div>
   );
 };
