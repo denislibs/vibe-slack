@@ -5,6 +5,14 @@ import { App } from "./App";
 import { createConversationStore } from "../entities/conversation/store";
 import { createConnectionStore } from "../entities/connection/store";
 import { createSessionStore } from "../entities/session/store";
+import { createWorkspaceStore } from "../entities/workspace/store";
+
+const selectedWorkspace = () => {
+  const w = createWorkspaceStore();
+  w.setList([{ id: "w1", name: "Acme", slug: "acme", role: "owner" }]);
+  w.select("w1");
+  return w;
+};
 
 describe("App", () => {
   it("renders the chat page wired to injected stores + send handler", () => {
@@ -17,7 +25,7 @@ describe("App", () => {
     session.authenticated("t"); session.onboarded("d");
 
     const { getByText, getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={onSend} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={onSend} />
     ));
     expect(getByText("wired")).toBeTruthy();
     expect(getByTestId("status").textContent).toBe("online");
@@ -30,7 +38,7 @@ describe("App", () => {
     const session = createSessionStore();
     session.authenticated("t"); session.onboarded("d");
     const { queryByText, findByText } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} />
     ));
     expect(queryByText("late message")).toBeNull();
     // Mutate the store AFTER mount — the DOM must update reactively.
@@ -44,7 +52,7 @@ describe("App", () => {
     const session = createSessionStore();
     session.authenticated("t"); session.onboarded("d");
     const { getByTestId } = render(() => (
-      <App groupId="g1" conversation={conv} connection={conn} session={session} onLogin={() => {}} onRegister={() => {}} authError="" busy={false} onSend={() => {}} />
+      <App groupId="g1" conversation={conv} connection={conn} session={session} workspace={selectedWorkspace()} onLogin={() => {}} onRegister={() => {}} onCreateWorkspace={() => {}} onSelectWorkspace={() => {}} authError="" busy={false} onSend={() => {}} />
     ));
     expect(getByTestId("status").textContent).toBe("offline");
     conn.setStatus("online");
@@ -57,7 +65,9 @@ describe("App", () => {
 describe("App auth gate", () => {
   const base = (session: ReturnType<typeof createSessionStore>) => ({
     groupId: "g1", conversation: createConversationStore(), connection: createConnectionStore(),
-    session, onLogin: vi.fn(), onRegister: vi.fn(), onSend: vi.fn(), authError: "", busy: false,
+    session, workspace: selectedWorkspace(),
+    onLogin: vi.fn(), onRegister: vi.fn(), onCreateWorkspace: vi.fn(), onSelectWorkspace: vi.fn(),
+    onSend: vi.fn(), authError: "", busy: false,
   });
 
   it("shows the auth page when anonymous", () => {
@@ -73,5 +83,44 @@ describe("App auth gate", () => {
     props.connection.setStatus("online");
     const { getByText } = render(() => <App {...props} />);
     expect(getByText("hello-chat")).toBeTruthy();
+  });
+});
+
+describe("App workspace gate", () => {
+  it("shows the workspace page when onboarded with no workspace selected", () => {
+    const session = createSessionStore();
+    session.authenticated("TOK"); session.onboarded("DEV1");
+    const workspace = createWorkspaceStore();
+    workspace.setList([{ id: "w1", name: "Acme", slug: "acme", role: "owner" }]);
+    const { getByText } = render(() => (
+      <App
+        groupId="g1" conversation={createConversationStore()} connection={createConnectionStore()}
+        session={session} workspace={workspace}
+        onLogin={vi.fn()} onRegister={vi.fn()} onCreateWorkspace={vi.fn()} onSelectWorkspace={vi.fn()}
+        onSend={vi.fn()} authError="" busy={false}
+      />
+    ));
+    expect(getByText("Workspaces")).toBeTruthy();
+  });
+
+  it("shows the chat once a workspace is selected", () => {
+    const session = createSessionStore();
+    session.authenticated("TOK"); session.onboarded("DEV1");
+    const workspace = createWorkspaceStore();
+    workspace.setList([{ id: "w1", name: "Acme", slug: "acme", role: "owner" }]);
+    const conversation = createConversationStore();
+    conversation.addMessage("g1", { seq: 1, sender: "alice", text: "ws-chat" });
+    const connection = createConnectionStore();
+    connection.setStatus("online");
+    workspace.select("w1");
+    const { getByText } = render(() => (
+      <App
+        groupId="g1" conversation={conversation} connection={connection}
+        session={session} workspace={workspace}
+        onLogin={vi.fn()} onRegister={vi.fn()} onCreateWorkspace={vi.fn()} onSelectWorkspace={vi.fn()}
+        onSend={vi.fn()} authError="" busy={false}
+      />
+    ));
+    expect(getByText("ws-chat")).toBeTruthy();
   });
 });

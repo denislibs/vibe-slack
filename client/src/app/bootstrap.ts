@@ -9,6 +9,9 @@ import { createAuthenticator } from "../features/authenticate/authenticate";
 import { onboardDevice } from "../features/onboard-device/onboardDevice";
 import { createAuthFlow } from "./authFlow";
 import { createSessionStore } from "../entities/session/store";
+import { createWorkspaceStore } from "../entities/workspace/store";
+import { createWorkspaces } from "../features/workspaces/workspaces";
+import { WorkspaceClient } from "../shared/api/workspace";
 import { DS_HTTP_URL } from "../shared/config/env";
 import wasmUrl from "../shared/lib/auth/opaque-wasm/opaque.wasm?url";
 import wasmExecUrl from "../shared/lib/auth/opaque-wasm/wasm_exec.js?url";
@@ -93,5 +96,13 @@ export function bootstrap(deviceName: string) {
     session,
   });
 
-  return { orchestrator, conversation, connection, session, authFlow };
+  const workspace = createWorkspaceStore();
+  const wsClient = new WorkspaceClient(DS_HTTP_URL);
+  const workspaces = createWorkspaces({
+    client: wsClient,
+    store: workspace,
+    token: () => session.token() ?? "",
+  });
+
+  return { orchestrator, conversation, connection, session, workspace, workspaces, authFlow };
 }
