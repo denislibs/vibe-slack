@@ -135,6 +135,39 @@ export class WasmEngine {
         return v3;
     }
     /**
+     * Export the group's GroupInfo (with public ratchet tree) for joining a
+     * PUBLIC channel via external commit.
+     * @param {string} group_id
+     * @returns {Uint8Array}
+     */
+    export_group_info(group_id) {
+        const ptr0 = passStringToWasm0(group_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmengine_export_group_info(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * Join a PUBLIC channel via external commit; returns the commit to fan out.
+     * @param {Uint8Array} group_info
+     * @returns {Uint8Array}
+     */
+    join_by_external_commit(group_info) {
+        const ptr0 = passArray8ToWasm0(group_info, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmengine_join_by_external_commit(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
      * @param {Uint8Array} welcome
      */
     join_from_welcome(welcome) {

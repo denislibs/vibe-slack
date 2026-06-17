@@ -23,6 +23,15 @@ export class WasmEngine {
      */
     decrypt(group_id: string, message: Uint8Array): Uint8Array;
     encrypt(group_id: string, plaintext: Uint8Array): Uint8Array;
+    /**
+     * Export the group's GroupInfo (with public ratchet tree) for joining a
+     * PUBLIC channel via external commit.
+     */
+    export_group_info(group_id: string): Uint8Array;
+    /**
+     * Join a PUBLIC channel via external commit; returns the commit to fan out.
+     */
+    join_by_external_commit(group_info: Uint8Array): Uint8Array;
     join_from_welcome(welcome: Uint8Array): void;
     key_package_bytes(): Uint8Array;
     constructor(name: string);
@@ -43,6 +52,8 @@ export interface InitOutput {
     readonly wasmengine_create_group_with_compliance: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly wasmengine_decrypt: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly wasmengine_encrypt: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly wasmengine_export_group_info: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly wasmengine_join_by_external_commit: (a: number, b: number, c: number) => [number, number, number, number];
     readonly wasmengine_join_from_welcome: (a: number, b: number, c: number) => [number, number];
     readonly wasmengine_key_package_bytes: (a: number) => [number, number, number, number];
     readonly wasmengine_new: (a: number, b: number) => number;
