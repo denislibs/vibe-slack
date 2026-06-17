@@ -28,7 +28,7 @@ export const MessageList: Component<{ messages: ChatMessage[]; title?: string }>
         <div class={s.empty}>
           <div class={s.introTile}>#</div>
           <div class={s.introTitle}>
-            This is the very beginning of {props.title ? `the # ${props.title} channel` : "this conversation"}.
+            This is the very beginning of #{props.title ?? "this conversation"}.
           </div>
           <div class={s.introSub}>Send a message to kick things off.</div>
         </div>

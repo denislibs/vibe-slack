@@ -14,8 +14,8 @@ export const Composer: Component<{ onSend: (text: string) => void }> = (props) =
     <div class={s.outer}>
       <div class={s.box}>
         <div class={s.toolbar} aria-hidden="true">
-          <span class={s.tool}>B</span>
-          <span class={s.tool}><i>I</i></span>
+          <span class={`${s.tool} ${s.bold}`}>B</span>
+          <span class={`${s.tool} ${s.italic}`}>I</span>
           <span class={s.tool}>🔗</span>
         </div>
         <input

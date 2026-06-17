@@ -1,32 +1,33 @@
 .outer {
-  padding: 0 20px 20px;
+  padding: 8px 20px 20px;
 }
 .box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--composer-bg);
-  padding: var(--space-2) 10px;
+  overflow: hidden;
 }
 .toolbar {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
   color: var(--text-muted);
-  font-size: var(--fs-14);
 }
 .tool {
-  font-weight: 700;
   line-height: 1;
   cursor: default;
   user-select: none;
 }
-.tool i {
+.bold {
+  font-weight: 700;
+}
+.italic {
   font-style: italic;
 }
 .input {
+  display: block;
   border: none;
   outline: none;
   background: transparent;
@@ -34,7 +35,7 @@
   font-family: inherit;
   font-size: var(--fs-15);
   width: 100%;
-  padding: var(--space-1) 0;
+  padding: 9px 12px;
 }
 .input::placeholder {
   color: var(--text-muted);
@@ -42,4 +43,5 @@
 .strip {
   display: flex;
   justify-content: flex-end;
+  padding: 6px 10px;
 }

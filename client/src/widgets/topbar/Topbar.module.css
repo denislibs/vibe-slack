@@ -1,11 +1,11 @@
 .topbar {
-  height: 44px;
+  height: 40px;
   background: var(--topbar-bg);
   color: var(--topbar-text);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 10px;
+  padding: 0 12px;
 }
 
 .nav {
@@ -17,8 +17,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: transparent;
   border-radius: var(--radius-sm);
@@ -30,23 +30,40 @@
 }
 .chevron:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.1);
 }
 
+/* Search pill */
+.searchWrap {
+  flex: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--topbar-text);
+}
+.searchIcon {
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
 .search {
   flex: 1;
-  max-width: 640px;
-  margin: 0 auto;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid transparent;
-  border-radius: 6px;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
   color: var(--topbar-text);
-  padding: 0 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-family: inherit;
   outline: none;
-  cursor: pointer;
+  cursor: default;
 }
 .search::placeholder {
   color: var(--topbar-text);
@@ -61,18 +78,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: transparent;
   border-radius: 50%;
   color: var(--topbar-text);
   opacity: 0.7;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
 }
 .help:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.1);
 }

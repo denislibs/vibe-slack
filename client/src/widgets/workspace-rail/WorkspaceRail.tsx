@@ -12,7 +12,7 @@ export const WorkspaceRail: Component<{
 }> = (props) => (
   <nav class={s.rail}>
     <button type="button" class={`${s.workspaceBtn} ${s.activeWorkspace}`} aria-label={props.workspaceName}>
-      <Avatar name={props.workspaceName} size={40} />
+      <Avatar name={props.workspaceName} size={36} />
     </button>
 
     <IconButton label="Create workspace" onClick={() => props.onCreateWorkspace?.()}>
@@ -35,6 +35,8 @@ export const WorkspaceRail: Component<{
     <IconButton label="Toggle theme" onClick={() => props.onToggleTheme()}>
       {props.theme === "dark" ? "☀" : "☾"}
     </IconButton>
-    <Avatar name={props.userEmail || "?"} size={32} />
+    <span class={s.userAvatar}>
+      <Avatar name={props.userEmail || "?"} size={28} />
+    </span>
   </nav>
 );

@@ -13,12 +13,17 @@ export const Topbar: Component<{ workspaceName: string }> = (props) => (
       </button>
     </div>
 
-    <input
-      class={s.search}
-      readOnly
-      placeholder={`Search ${props.workspaceName}`}
-      aria-label="Search"
-    />
+    <div class={s.searchWrap}>
+      <span class={s.searchIcon} aria-hidden="true">
+        🔍
+      </span>
+      <input
+        class={s.search}
+        readOnly
+        placeholder={`Search ${props.workspaceName}`}
+        aria-label="Search"
+      />
+    </div>
 
     <div class={s.right}>
       <button type="button" class={s.help} aria-label="Help">
