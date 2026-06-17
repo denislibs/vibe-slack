@@ -40,7 +40,7 @@ func TestRelayBuildsLeavesAndSTH(t *testing.T) {
 	devices := store.NewDeviceRepo(pool)
 	kt := store.NewKTRepo(pool)
 
-	u, _ := users.Create(ctx, "rl@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "rl@corp", "rluser", []byte("rec"))
 	d1, _ := devices.Enroll(ctx, u.ID, []byte("keyA"), "laptop")
 	devices.Enroll(ctx, u.ID, []byte("keyB"), "phone")
 
@@ -96,7 +96,7 @@ func TestRelayBatchIsAllOrNothing(t *testing.T) {
 	_, priv, _ := ed25519.GenerateKey(rand.Reader)
 	relay := NewRelay(pool, kt, store.NewDeviceRepo(pool), NewSTHSigner(priv))
 
-	u, _ := users.Create(ctx, "atomic@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "atomic@corp", "atomicuser", []byte("rec"))
 	devices.Enroll(ctx, u.ID, []byte("k1"), "a")
 	devices.Enroll(ctx, u.ID, []byte("k2"), "b")
 	devices.Enroll(ctx, u.ID, []byte("k3"), "c")

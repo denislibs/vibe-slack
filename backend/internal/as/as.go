@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/messenger/backend/internal/opaque"
@@ -15,6 +16,18 @@ import (
 )
 
 var ErrAuthFailed = errors.New("as: authentication failed")
+
+var ErrInvalidUsername = errors.New("as: invalid username")
+
+var usernameRe = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
+
+// ValidateUsername enforces the public username format (lowercase, digits, underscore).
+func ValidateUsername(s string) error {
+	if !usernameRe.MatchString(s) {
+		return ErrInvalidUsername
+	}
+	return nil
+}
 
 const loginStateTTL = 30 * time.Second
 
@@ -42,10 +55,11 @@ func (s *Service) RegisterStart(ctx context.Context, email string, regReq []byte
 	return s.opaque.RegistrationResponse(regReq, credID(email))
 }
 
-func (s *Service) RegisterFinish(ctx context.Context, email string, record []byte) error {
-	// TODO(WF-3): real username — passing email as username is a stopgap so the build
-	// compiles; WF-3 will add a real username param + validation to RegisterFinish.
-	_, err := s.users.Create(ctx, email, email, record)
+func (s *Service) RegisterFinish(ctx context.Context, email, username string, record []byte) error {
+	if err := ValidateUsername(username); err != nil {
+		return err
+	}
+	_, err := s.users.Create(ctx, email, username, record)
 	return err
 }
 

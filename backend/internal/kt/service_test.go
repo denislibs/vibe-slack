@@ -19,7 +19,7 @@ func TestServiceLookupReturnsVerifiableProof(t *testing.T) {
 	ktRepo := store.NewKTRepo(pool)
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 
-	u, _ := users.Create(ctx, "svc@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "svc@corp", "svcuser", []byte("rec"))
 	devices.Enroll(ctx, u.ID, []byte("keyA"), "laptop")
 	relay := NewRelay(pool, ktRepo, store.NewDeviceRepo(pool), NewSTHSigner(priv))
 	relay.Tick(ctx)
@@ -52,13 +52,13 @@ func TestLookupNeverReturnsLeafBeyondSTH(t *testing.T) {
 	relay := NewRelay(pool, ktRepo, store.NewDeviceRepo(pool), NewSTHSigner(priv))
 	svc := NewService(ktRepo)
 
-	u, _ := users.Create(ctx, "snap@corp", []byte("rec"))
+	u, _ := users.Create(ctx, "snap@corp", "snapuser", []byte("rec"))
 	devices.Enroll(ctx, u.ID, []byte("k1"), "a")
 	relay.Tick(ctx) // STH now covers u's leaf
 
 	// Append a leaf for a SECOND identity directly WITHOUT issuing a new STH,
 	// simulating the window between leaf-commit and STH-issue.
-	u2, _ := users.Create(ctx, "snap2@corp", []byte("rec"))
+	u2, _ := users.Create(ctx, "snap2@corp", "snap2user", []byte("rec"))
 	canonical := CanonicalLeaf(u2.ID, 1, [][]byte{[]byte("k2")})
 	ktRepo.AppendLeaf(ctx, u2.ID, 1, canonical, LeafHash(canonical))
 

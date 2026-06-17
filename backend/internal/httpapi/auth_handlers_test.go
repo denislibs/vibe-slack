@@ -21,11 +21,11 @@ import (
 
 type memUsers struct{ m map[string]*store.User }
 
-func (u *memUsers) Create(_ context.Context, e string, r []byte) (*store.User, error) {
+func (u *memUsers) Create(_ context.Context, e, username string, r []byte) (*store.User, error) {
 	if _, ok := u.m[e]; ok {
 		return nil, store.ErrConflict
 	}
-	usr := &store.User{ID: "u-" + e, Email: e, OpaqueRecord: r}
+	usr := &store.User{ID: "u-" + e, Email: e, Username: username, OpaqueRecord: r}
 	u.m[e] = usr
 	return usr, nil
 }
@@ -99,7 +99,7 @@ func TestFullOpaqueFlowOverHTTP(t *testing.T) {
 	record, _, _ := client.RegistrationFinalize(regResp, nil, []byte("messenger-as"))
 
 	rec = postJSON(t, h, "/auth/register/finish",
-		map[string]string{"email": "carol@corp", "opaque_registration_record": b64(record.Serialize())}, "")
+		map[string]string{"email": "carol@corp", "username": "carol", "opaque_registration_record": b64(record.Serialize())}, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("register/finish: %d %s", rec.Code, rec.Body)
 	}

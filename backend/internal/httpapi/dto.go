@@ -14,6 +14,7 @@ type registerStartResp struct {
 }
 type registerFinishReq struct {
 	Email                    string `json:"email"`
+	Username                 string `json:"username"`
 	OpaqueRegistrationRecord string `json:"opaque_registration_record"`
 }
 type loginStartReq struct {

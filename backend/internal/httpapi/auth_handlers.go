@@ -61,16 +61,19 @@ func (h *authHandlers) registerFinish(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	err := h.svc.RegisterFinish(r.Context(), req.Email, rec)
-	if errors.Is(err, store.ErrConflict) {
+	err := h.svc.RegisterFinish(r.Context(), req.Email, req.Username, rec)
+	switch {
+	case errors.Is(err, as.ErrInvalidUsername):
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid username")
+	case errors.Is(err, store.ErrUsernameTaken):
+		writeError(w, http.StatusConflict, "conflict", "username taken")
+	case errors.Is(err, store.ErrConflict):
 		writeError(w, http.StatusConflict, "conflict", "account already exists")
-		return
-	}
-	if err != nil {
+	case err != nil:
 		writeError(w, http.StatusInternalServerError, "internal", "could not store record")
-		return
+	default:
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *authHandlers) loginStart(w http.ResponseWriter, r *http.Request) {

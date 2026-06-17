@@ -53,6 +53,21 @@ func newAS(t *testing.T) *Service {
 	return NewService(srv, newFakeUsers(), sess, rdb)
 }
 
+func TestValidateUsername(t *testing.T) {
+	ok := []string{"alice", "bob_99", "a_b_c", "abc"}
+	bad := []string{"ab", "Alice", "has space", "no-dash", "waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay_too_long_xxxxx", ""}
+	for _, s := range ok {
+		if err := ValidateUsername(s); err != nil {
+			t.Errorf("expected %q valid, got %v", s, err)
+		}
+	}
+	for _, s := range bad {
+		if err := ValidateUsername(s); err == nil {
+			t.Errorf("expected %q invalid", s)
+		}
+	}
+}
+
 func TestRegisterAndLoginRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	svc := newAS(t)
@@ -67,7 +82,7 @@ func TestRegisterAndLoginRoundTrip(t *testing.T) {
 	}
 	regResp, _ := client.Deserialize.RegistrationResponse(respBytes)
 	record, _, _ := client.RegistrationFinalize(regResp, nil, []byte("messenger-as"))
-	if err := svc.RegisterFinish(ctx, "bob@corp", record.Serialize()); err != nil {
+	if err := svc.RegisterFinish(ctx, "bob@corp", "bob", record.Serialize()); err != nil {
 		t.Fatalf("RegisterFinish: %v", err)
 	}
 
