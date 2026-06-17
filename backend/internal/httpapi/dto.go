@@ -117,6 +117,16 @@ type addConvUserReq struct {
 	EmailOrUsername string `json:"email_or_username"`
 }
 
+type groupInfoResp struct {
+	GroupInfo string `json:"group_info"`
+}
+type putGroupInfoReq struct {
+	GroupInfo string `json:"group_info"`
+}
+type complianceKPResp struct {
+	KeyPackage string `json:"key_package"`
+}
+
 type keyMaterialResp struct {
 	DeviceID         string `json:"device_id"`
 	SigningPublicKey string `json:"signing_public_key"`
