@@ -46,6 +46,43 @@ func TestDeviceEnrollWritesOutboxInSameTx(t *testing.T) {
 	}
 }
 
+func TestActiveDevicesWithKeys(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	users := NewUserRepo(pool)
+	devices := NewDeviceRepo(pool)
+
+	u, _ := users.Create(ctx, "erin@corp", "erin", []byte("rec"))
+
+	d1, err := devices.Enroll(ctx, u.ID, []byte("key-one"), "laptop")
+	if err != nil {
+		t.Fatalf("enroll d1: %v", err)
+	}
+	d2, err := devices.Enroll(ctx, u.ID, []byte("key-two"), "phone")
+	if err != nil {
+		t.Fatalf("enroll d2: %v", err)
+	}
+
+	got, err := devices.ActiveDevicesWithKeys(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("ActiveDevicesWithKeys: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 active devices, got %d", len(got))
+	}
+
+	byID := map[string][]byte{}
+	for _, dk := range got {
+		byID[dk.DeviceID] = dk.SigningPublicKey
+	}
+	if string(byID[d1.ID]) != "key-one" {
+		t.Fatalf("d1 signing key mismatch: %q", byID[d1.ID])
+	}
+	if string(byID[d2.ID]) != "key-two" {
+		t.Fatalf("d2 signing key mismatch: %q", byID[d2.ID])
+	}
+}
+
 func TestRevokeOtherUsersDeviceFails(t *testing.T) {
 	pool := newTestPool(t)
 	ctx := context.Background()

@@ -99,6 +99,31 @@ func (r *DeviceRepo) ActiveSigningKeys(ctx context.Context, userID string) ([][]
 	return out, rows.Err()
 }
 
+type DeviceKey struct {
+	DeviceID         string
+	SigningPublicKey []byte
+}
+
+// ActiveDevicesWithKeys returns the device IDs and signing public keys of a
+// user's active devices, for per-device key-material lookups.
+func (r *DeviceRepo) ActiveDevicesWithKeys(ctx context.Context, userID string) ([]DeviceKey, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, signing_public_key FROM devices WHERE user_id=$1 AND status='active' ORDER BY id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DeviceKey
+	for rows.Next() {
+		var d DeviceKey
+		if err := rows.Scan(&d.DeviceID, &d.SigningPublicKey); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
 func emitKTEvent(ctx context.Context, tx pgx.Tx, userID, eventType string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {

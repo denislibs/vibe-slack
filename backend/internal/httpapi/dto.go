@@ -116,3 +116,9 @@ type convResp struct {
 type addConvUserReq struct {
 	EmailOrUsername string `json:"email_or_username"`
 }
+
+type keyMaterialResp struct {
+	DeviceID         string `json:"device_id"`
+	SigningPublicKey string `json:"signing_public_key"`
+	KeyPackage       string `json:"key_package"`
+}
