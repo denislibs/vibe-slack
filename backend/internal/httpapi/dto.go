@@ -60,3 +60,7 @@ type countResp struct {
 type uploadKeyPackagesReq struct {
 	KeyPackages []string `json:"key_packages"`
 }
+type addMemberReq struct {
+	DeviceID string `json:"device_id"`
+	JoinSeq  int64  `json:"join_seq"`
+}

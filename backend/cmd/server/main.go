@@ -63,8 +63,9 @@ func main() {
 	svc := as.NewService(osrv, store.NewUserRepo(pool), sess, rdb)
 	devSvc := devices.NewService(store.NewDeviceRepo(pool))
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
+	rosterRepo := store.NewRosterRepo(pool)
 
-	handler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl)
+	handler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo)
 
 	log.Printf("auth-service listening on %s", cfg.HTTPAddr)
 	if err := http.ListenAndServe(cfg.HTTPAddr, handler); err != nil {
