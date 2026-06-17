@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,33 +63,109 @@ func newRosterServer(t *testing.T) (http.Handler, *store.RosterRepo) {
 	return NewRouterFull(svc, sess, devSvc, kpSvc, rl, roster, ktSvc, ktPub, nil, nil), roster
 }
 
-func TestRosterAddAndListMembers(t *testing.T) {
-	h, roster := newRosterServer(t)
-	token := registerAndLogin(t, h, "grace@corp", "roster-pass")
-	deviceID := enrollDevice(t, h, token)
+// fakeRosterStore records calls so tests can assert the store was (or was not)
+// invoked.
+type fakeRosterStore struct {
+	addErr      error
+	removeErr   error
+	addCalls    []rosterCall
+	removeCalls []rosterCall
+}
 
-	rec := postJSON(t, h, "/conversations/g1/members", map[string]any{
-		"device_id": deviceID, "join_seq": 0,
-	}, token)
+type rosterCall struct {
+	groupID  string
+	deviceID string
+	joinSeq  int64
+}
+
+func (f *fakeRosterStore) AddMember(_ context.Context, groupID, deviceID string, joinSeq int64) error {
+	f.addCalls = append(f.addCalls, rosterCall{groupID, deviceID, joinSeq})
+	return f.addErr
+}
+func (f *fakeRosterStore) RemoveMember(_ context.Context, groupID, deviceID string) error {
+	f.removeCalls = append(f.removeCalls, rosterCall{groupID: groupID, deviceID: deviceID})
+	return f.removeErr
+}
+
+// fakeMembership returns a configurable membership result.
+type fakeMembership struct {
+	member bool
+	err    error
+}
+
+func (f *fakeMembership) IsMember(context.Context, string, string) (bool, error) {
+	return f.member, f.err
+}
+
+func TestRosterAddMember_NonMemberForbidden(t *testing.T) {
+	store := &fakeRosterStore{}
+	h := &rosterHandlers{roster: store, members: &fakeMembership{member: false}}
+
+	req := withSession(httptest.NewRequest(http.MethodPost, "/conversations/g1/members",
+		strings.NewReader(`{"device_id":"d1","join_seq":0}`)))
+	req.SetPathValue("group", "g1")
+	rec := httptest.NewRecorder()
+	h.addMember(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for non-member, got %d %s", rec.Code, rec.Body)
+	}
+	if len(store.addCalls) != 0 {
+		t.Fatalf("roster store must not be called for non-member, got %+v", store.addCalls)
+	}
+}
+
+func TestRosterAddMember_MemberAllowed(t *testing.T) {
+	store := &fakeRosterStore{}
+	h := &rosterHandlers{roster: store, members: &fakeMembership{member: true}}
+
+	req := withSession(httptest.NewRequest(http.MethodPost, "/conversations/g1/members",
+		strings.NewReader(`{"device_id":"d1","join_seq":7}`)))
+	req.SetPathValue("group", "g1")
+	rec := httptest.NewRecorder()
+	h.addMember(rec, req)
+
 	if rec.Code != http.StatusOK {
-		t.Fatalf("add member: %d %s", rec.Code, rec.Body)
+		t.Fatalf("expected 200 for member, got %d %s", rec.Code, rec.Body)
 	}
+	if len(store.addCalls) != 1 || store.addCalls[0] != (rosterCall{"g1", "d1", 7}) {
+		t.Fatalf("expected one AddMember call (g1,d1,7), got %+v", store.addCalls)
+	}
+}
 
-	members, _ := roster.Members(context.Background(), "g1")
-	if len(members) != 1 || members[0].DeviceID != deviceID {
-		t.Fatalf("expected device in roster, got %+v", members)
-	}
+func TestRosterRemoveMember_NonMemberForbidden(t *testing.T) {
+	store := &fakeRosterStore{}
+	h := &rosterHandlers{roster: store, members: &fakeMembership{member: false}}
 
-	// Remove it.
-	req, _ := http.NewRequest(http.MethodDelete, "/conversations/g1/members/"+deviceID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec2 := serve(h, req)
-	if rec2.Code != http.StatusOK {
-		t.Fatalf("remove member: %d %s", rec2.Code, rec2.Body)
+	req := withSession(httptest.NewRequest(http.MethodDelete, "/conversations/g1/members/d1", nil))
+	req.SetPathValue("group", "g1")
+	req.SetPathValue("device", "d1")
+	rec := httptest.NewRecorder()
+	h.removeMember(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for non-member, got %d %s", rec.Code, rec.Body)
 	}
-	members2, _ := roster.Members(context.Background(), "g1")
-	if len(members2) != 0 {
-		t.Fatalf("expected empty roster after remove, got %+v", members2)
+	if len(store.removeCalls) != 0 {
+		t.Fatalf("roster store must not be called for non-member, got %+v", store.removeCalls)
+	}
+}
+
+func TestRosterRemoveMember_MemberAllowed(t *testing.T) {
+	store := &fakeRosterStore{}
+	h := &rosterHandlers{roster: store, members: &fakeMembership{member: true}}
+
+	req := withSession(httptest.NewRequest(http.MethodDelete, "/conversations/g1/members/d1", nil))
+	req.SetPathValue("group", "g1")
+	req.SetPathValue("device", "d1")
+	rec := httptest.NewRecorder()
+	h.removeMember(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for member, got %d %s", rec.Code, rec.Body)
+	}
+	if len(store.removeCalls) != 1 || store.removeCalls[0] != (rosterCall{groupID: "g1", deviceID: "d1"}) {
+		t.Fatalf("expected one RemoveMember call (g1,d1), got %+v", store.removeCalls)
 	}
 }
 

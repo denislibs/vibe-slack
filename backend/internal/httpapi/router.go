@@ -37,7 +37,7 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
-	rh := &rosterHandlers{roster: rosterRepo}
+	rh := &rosterHandlers{roster: rosterRepo, members: convSvc}
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	wh := &workspaceHandlers{svc: wsSvc}
 	ch := &conversationHandlers{svc: convSvc}
@@ -61,8 +61,8 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("GET /keypackages/count", auth(http.HandlerFunc(kh.count)))
 	mux.Handle("GET /keypackages/{device_id}", auth(http.HandlerFunc(kh.consume)))
 
-	// Authorization policy (whether the caller may mutate this conversation) is
-	// deliberately out of scope per the spec; auth provides the baseline check.
+	// Device-roster mutations are gated to user-members of the conversation
+	// (see rosterHandlers); non-members receive 404.
 	mux.Handle("POST /conversations/{group}/members", auth(http.HandlerFunc(rh.addMember)))
 	mux.Handle("DELETE /conversations/{group}/members/{device}", auth(http.HandlerFunc(rh.removeMember)))
 
