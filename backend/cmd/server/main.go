@@ -25,6 +25,7 @@ import (
 	"github.com/messenger/backend/internal/platform/redis"
 	"github.com/messenger/backend/internal/session"
 	"github.com/messenger/backend/internal/store"
+	"github.com/messenger/backend/internal/workspace"
 	"github.com/messenger/backend/internal/ws"
 )
 
@@ -73,6 +74,7 @@ func main() {
 	devSvc := devices.NewService(store.NewDeviceRepo(pool))
 	kpSvc := keypackages.NewService(store.NewKeyPackageRepo(pool))
 	rosterRepo := store.NewRosterRepo(pool)
+	wsSvc := workspace.NewService(store.NewWorkspaceRepo(pool), store.NewUserRepo(pool))
 
 	// Delivery service + websocket gateway.
 	hubReg := hub.New(256)
@@ -113,7 +115,7 @@ func main() {
 		}
 	}()
 
-	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub)
+	apiHandler := httpapi.NewRouterFull(svc, sess, devSvc, kpSvc, rl, rosterRepo, ktSvc, ktPub, wsSvc)
 	root := http.NewServeMux()
 	root.Handle("/", apiHandler)
 	root.HandleFunc("/ws", gw.Handle)
