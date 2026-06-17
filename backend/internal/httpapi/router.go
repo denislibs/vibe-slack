@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/messenger/backend/internal/as"
+	"github.com/messenger/backend/internal/conversations"
 	"github.com/messenger/backend/internal/devices"
 	"github.com/messenger/backend/internal/keypackages"
 	"github.com/messenger/backend/internal/kt"
@@ -31,14 +32,15 @@ func NewRouter(svc *as.Service, sess *session.Manager) http.Handler {
 	return recoverMW(mux)
 }
 
-func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service) http.Handler {
+func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Service, kpSvc *keypackages.Service, rl *session.RateLimiter, rosterRepo *store.RosterRepo, ktSvc *kt.Service, ktPub ed25519.PublicKey, wsSvc *workspace.Service, convSvc *conversations.Service) http.Handler {
 	mux := http.NewServeMux()
 	ah := &authHandlers{svc: svc, sess: sess}
 	dh := &deviceHandlers{svc: devSvc, kp: kpSvc, sess: sess}
 	kh := &keypackageHandlers{svc: kpSvc}
-	rh := &rosterHandlers{roster: rosterRepo}
+	rh := &rosterHandlers{roster: rosterRepo, members: convSvc}
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	wh := &workspaceHandlers{svc: wsSvc}
+	ch := &conversationHandlers{svc: convSvc}
 	rlmw := rateLimitMW(rl)
 
 	mux.Handle("POST /auth/register/start", rlmw(http.HandlerFunc(ah.registerStart)))
@@ -59,8 +61,8 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("GET /keypackages/count", auth(http.HandlerFunc(kh.count)))
 	mux.Handle("GET /keypackages/{device_id}", auth(http.HandlerFunc(kh.consume)))
 
-	// Authorization policy (whether the caller may mutate this conversation) is
-	// deliberately out of scope per the spec; auth provides the baseline check.
+	// Device-roster mutations are gated to user-members of the conversation
+	// (see rosterHandlers); non-members receive 404.
 	mux.Handle("POST /conversations/{group}/members", auth(http.HandlerFunc(rh.addMember)))
 	mux.Handle("DELETE /conversations/{group}/members/{device}", auth(http.HandlerFunc(rh.removeMember)))
 
@@ -73,10 +75,18 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, devSvc *devices.Servi
 	mux.Handle("POST /workspaces", auth(http.HandlerFunc(wh.create)))
 	mux.Handle("GET /workspaces", auth(http.HandlerFunc(wh.list)))
 	mux.Handle("GET /workspaces/{id}/members", auth(http.HandlerFunc(wh.members)))
+	mux.Handle("GET /workspaces/{id}/members/search", auth(http.HandlerFunc(wh.search)))
 	mux.Handle("POST /workspaces/{id}/members", auth(http.HandlerFunc(wh.addMember)))
 	mux.Handle("PATCH /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.setRole)))
 	mux.Handle("DELETE /workspaces/{id}/members/me", auth(http.HandlerFunc(wh.leave)))
 	mux.Handle("DELETE /workspaces/{id}/members/{user}", auth(http.HandlerFunc(wh.removeMember)))
+
+	mux.Handle("POST /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.create)))
+	mux.Handle("GET /workspaces/{wsId}/conversations", auth(http.HandlerFunc(ch.list)))
+	mux.Handle("GET /conversations/{group}", auth(http.HandlerFunc(ch.get)))
+	mux.Handle("POST /conversations/{group}/join", auth(http.HandlerFunc(ch.join)))
+	mux.Handle("POST /conversations/{group}/users", auth(http.HandlerFunc(ch.addUser)))
+	mux.Handle("DELETE /conversations/{group}/users/{userId}", auth(http.HandlerFunc(ch.removeUser)))
 
 	return recoverMW(mux)
 }

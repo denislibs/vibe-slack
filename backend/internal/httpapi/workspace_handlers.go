@@ -14,6 +14,7 @@ type wsService interface {
 	Create(ctx context.Context, ownerUserID, name string) (*store.Workspace, error)
 	ListForUser(ctx context.Context, userID string) ([]store.WorkspaceWithRole, error)
 	Members(ctx context.Context, callerID, workspaceID string) ([]store.WorkspaceMember, error)
+	SearchMembers(ctx context.Context, callerID, wsID, q string) ([]store.WorkspaceMember, error)
 	AddMember(ctx context.Context, callerID, workspaceID, emailOrUsername string) (*store.WorkspaceMember, error)
 	SetRole(ctx context.Context, callerID, workspaceID, targetUserID, role string) error
 	RemoveMember(ctx context.Context, callerID, workspaceID, targetUserID string) error
@@ -70,6 +71,20 @@ func (h *workspaceHandlers) list(w http.ResponseWriter, r *http.Request) {
 func (h *workspaceHandlers) members(w http.ResponseWriter, r *http.Request) {
 	swt := sessionFrom(r.Context())
 	ms, err := h.svc.Members(r.Context(), swt.Session.UserID, r.PathValue("id"))
+	if err != nil {
+		writeWorkspaceErr(w, err)
+		return
+	}
+	out := make([]wsMemberResp, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, wsMemberResp{UserID: m.UserID, Username: m.Username, Email: m.Email, Role: m.Role})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (h *workspaceHandlers) search(w http.ResponseWriter, r *http.Request) {
+	swt := sessionFrom(r.Context())
+	ms, err := h.svc.SearchMembers(r.Context(), swt.Session.UserID, r.PathValue("id"), r.URL.Query().Get("q"))
 	if err != nil {
 		writeWorkspaceErr(w, err)
 		return
