@@ -58,12 +58,24 @@ type sessionWithToken struct {
 	Token   string
 }
 
+// tokenFromHTTP returns the session token from the Authorization: Bearer header,
+// falling back to the `session` cookie (set HttpOnly on login). Header wins.
+func tokenFromHTTP(r *http.Request) string {
+	authz := r.Header.Get("Authorization")
+	if t := strings.TrimPrefix(authz, "Bearer "); authz != "" && t != authz {
+		return t
+	}
+	if c, err := r.Cookie(sessionCookie); err == nil {
+		return c.Value
+	}
+	return ""
+}
+
 func authMW(sess *session.Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authz := r.Header.Get("Authorization")
-			token := strings.TrimPrefix(authz, "Bearer ")
-			if token == "" || token == authz {
+			token := tokenFromHTTP(r)
+			if token == "" {
 				writeError(w, http.StatusUnauthorized, "unauthorized", "missing bearer token")
 				return
 			}

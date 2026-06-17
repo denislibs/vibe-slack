@@ -34,4 +34,23 @@ func TestTokenFromRequest(t *testing.T) {
 	if got := tokenFromRequest(r5); got != "" {
 		t.Fatalf("non-bearer: got %q", got)
 	}
+	// cookie only → cookie token
+	r6, _ := http.NewRequest("GET", "/ws", nil)
+	r6.AddCookie(&http.Cookie{Name: "session", Value: "CTOK"})
+	if got := tokenFromRequest(r6); got != "CTOK" {
+		t.Fatalf("cookie token: got %q", got)
+	}
+	// precedence: header > query > cookie
+	r7, _ := http.NewRequest("GET", "/ws?access_token=QTOK", nil)
+	r7.Header.Set("Authorization", "Bearer HTOK")
+	r7.AddCookie(&http.Cookie{Name: "session", Value: "CTOK"})
+	if got := tokenFromRequest(r7); got != "HTOK" {
+		t.Fatalf("header should win over query+cookie: got %q", got)
+	}
+	// query > cookie when no header
+	r8, _ := http.NewRequest("GET", "/ws?access_token=QTOK", nil)
+	r8.AddCookie(&http.Cookie{Name: "session", Value: "CTOK"})
+	if got := tokenFromRequest(r8); got != "QTOK" {
+		t.Fatalf("query should win over cookie: got %q", got)
+	}
 }

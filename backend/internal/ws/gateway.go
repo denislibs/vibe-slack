@@ -29,13 +29,20 @@ func NewGateway(sess *session.Manager, d *delivery.Service, h *hub.Hub, f *fanou
 
 // tokenFromRequest extracts the session token from the Authorization: Bearer
 // header, falling back to the ?access_token= query param (browsers can't set
-// headers on WebSocket handshakes). The header wins when both are present.
+// headers on WebSocket handshakes), then to the `session` cookie (set HttpOnly
+// on login). Precedence: header > query > cookie.
 func tokenFromRequest(r *http.Request) string {
 	authz := r.Header.Get("Authorization")
 	if t := strings.TrimPrefix(authz, "Bearer "); authz != "" && t != authz {
 		return t
 	}
-	return r.URL.Query().Get("access_token")
+	if q := r.URL.Query().Get("access_token"); q != "" {
+		return q
+	}
+	if c, err := r.Cookie("session"); err == nil {
+		return c.Value
+	}
+	return ""
 }
 
 // Handle authenticates, upgrades, and runs the read/write pumps for one connection.
