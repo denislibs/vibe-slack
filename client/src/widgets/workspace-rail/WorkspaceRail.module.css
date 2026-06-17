@@ -4,10 +4,32 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2);
+  padding: 12px 0;
+  gap: 8px;
   height: 100%;
 }
+
+.workspaceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.activeWorkspace {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius);
+}
+
+.navGlyph {
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
 .spacer {
   margin-top: auto;
 }
