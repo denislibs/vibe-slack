@@ -3,6 +3,15 @@ import type { CryptoRequest, CryptoResponse } from "./protocol";
 
 let ready: Promise<void> | null = null;
 
+// Forward declaration of crypto ops implemented in the Rust/WASM engine but not
+// yet present in the generated `crypto_core.d.ts` (the WASM rebuild that emits
+// these signatures is a follow-up task). Once the bindings are regenerated the
+// real `WasmEngine` will carry these methods and this cast becomes a no-op.
+interface PendingEngineOps {
+  export_group_info(group_id: string): Uint8Array;
+  join_by_external_commit(group_info: Uint8Array): Uint8Array;
+}
+
 // Minimal, browser-safe view of the node `process` global so we can detect the
 // node/vitest runtime without pulling in `@types/node` (this is a browser
 // tsconfig: DOM + WebWorker libs only).
@@ -43,7 +52,7 @@ async function initWasm(): Promise<void> {
 }
 
 /** Pure dispatch over a specific engine — shared by every dispatcher. */
-async function dispatchTo(
+export async function dispatchTo(
   engine: WasmEngine,
   req: CryptoRequest,
 ): Promise<CryptoResponse> {
@@ -77,6 +86,16 @@ async function dispatchTo(
       case "joinFromWelcome":
         engine.join_from_welcome(req.welcome);
         result = null;
+        break;
+      case "exportGroupInfo":
+        result = (engine as unknown as PendingEngineOps).export_group_info(
+          req.groupId,
+        );
+        break;
+      case "joinByExternalCommit":
+        result = (
+          engine as unknown as PendingEngineOps
+        ).join_by_external_commit(req.groupInfo);
         break;
       case "encrypt":
         result = engine.encrypt(req.groupId, req.plaintext);

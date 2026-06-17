@@ -62,6 +62,12 @@ export class CryptoClient {
   async joinFromWelcome(welcome: Uint8Array): Promise<void> {
     await this.send({ kind: "joinFromWelcome", welcome });
   }
+  async exportGroupInfo(groupId: string): Promise<Uint8Array> {
+    return (await this.send({ kind: "exportGroupInfo", groupId })) as Uint8Array;
+  }
+  async joinByExternalCommit(groupInfo: Uint8Array): Promise<Uint8Array> {
+    return (await this.send({ kind: "joinByExternalCommit", groupInfo })) as Uint8Array;
+  }
   async encrypt(groupId: string, plaintext: Uint8Array): Promise<Uint8Array> {
     return (await this.send({ kind: "encrypt", groupId, plaintext })) as Uint8Array;
   }

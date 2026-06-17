@@ -6,6 +6,8 @@ export type CryptoRequest =
   | { id: string; kind: "addMember"; groupId: string; keyPackage: Uint8Array }
   | { id: string; kind: "removeMember"; groupId: string; leafIndex: number }
   | { id: string; kind: "joinFromWelcome"; welcome: Uint8Array }
+  | { id: string; kind: "exportGroupInfo"; groupId: string }
+  | { id: string; kind: "joinByExternalCommit"; groupInfo: Uint8Array }
   | { id: string; kind: "encrypt"; groupId: string; plaintext: Uint8Array }
   | { id: string; kind: "decrypt"; groupId: string; message: Uint8Array };
 
