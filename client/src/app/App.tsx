@@ -7,8 +7,10 @@ import type { ConnectionStore } from "../entities/connection/store";
 import type { SessionStore } from "../entities/session/store";
 import type { WorkspaceStore } from "../entities/workspace/store";
 
+type Channel = { id: string; name: string; visibility: string };
+type Dm = { id: string; name: string };
+
 export const App: Component<{
-  groupId: string;
   conversation: ConversationStore;
   connection: ConnectionStore;
   session: SessionStore;
@@ -23,6 +25,12 @@ export const App: Component<{
   theme: "dark" | "light";
   onToggleTheme: () => void;
   userEmail: string;
+  channels: Channel[];
+  dms: Dm[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onCreateChannel?: () => void;
+  onNewDm?: () => void;
 }> = (props) => (
   <Show
     when={props.session.status() !== "anonymous"}
@@ -40,7 +48,7 @@ export const App: Component<{
       }
     >
       <ChatPage
-        messages={props.conversation.messages(props.groupId)}
+        messages={props.conversation.messages(props.activeId)}
         status={props.connection.status()}
         onSend={props.onSend}
         workspaceName={
@@ -50,10 +58,12 @@ export const App: Component<{
         userEmail={props.userEmail}
         theme={props.theme}
         onToggleTheme={props.onToggleTheme}
-        channels={[]}
-        dms={[]}
-        activeId={props.groupId}
-        onSelect={() => {}}
+        channels={props.channels}
+        dms={props.dms}
+        activeId={props.activeId}
+        onSelect={props.onSelect}
+        onAddChannel={props.onCreateChannel}
+        onNewDm={props.onNewDm}
       />
     </Show>
   </Show>

@@ -34,6 +34,18 @@ describe("WorkspaceClient", () => {
     expect(JSON.parse((f.mock.calls[0][1] as any).body)).toEqual({ email_or_username: "bob" });
   });
 
+  it("searchMembers GETs the encoded query with bearer and returns the array", async () => {
+    const f = mockFetch(200, [{ user_id: "u2", username: "bob", email: "bob@c", role: "member" }]);
+    const c = new WorkspaceClient("http://api", f);
+    const r = await c.searchMembers("TOK", "w1", "bo b");
+    expect(r).toHaveLength(1);
+    expect(r[0].username).toBe("bob");
+    const [url, init] = f.mock.calls[0];
+    expect(url).toBe("http://api/workspaces/w1/members/search?q=bo%20b");
+    expect((init as RequestInit).method).toBe("GET");
+    expect((init as any).headers.Authorization).toBe("Bearer TOK");
+  });
+
   it("throws on non-2xx", async () => {
     const f = mockFetch(403, { error: "forbidden", message: "nope" });
     const c = new WorkspaceClient("http://api", f);
