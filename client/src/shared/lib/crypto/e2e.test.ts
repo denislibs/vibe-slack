@@ -63,4 +63,41 @@ describe("crypto e2e via worker dispatch", () => {
     expect(removeRes.ok).toBe(true);
     expect((removeRes as { result: Uint8Array }).result.length).toBeGreaterThan(0);
   });
+
+  it("bob joins a public channel by external commit and decrypts alice's message", async () => {
+    const alice = createDispatcher("alice@corp");
+    const bob = createDispatcher("bob@corp");
+
+    const created = await alice.handleRequest({ id: "p1", kind: "createGroup", groupId: "pub-1" });
+    expect(created.ok).toBe(true);
+
+    // Alice exports the group info; non-empty bytes.
+    const giRes = await alice.handleRequest({ id: "p2", kind: "exportGroupInfo", groupId: "pub-1" });
+    expect(giRes.ok).toBe(true);
+    const gi = (giRes as { result: Uint8Array }).result;
+    expect(gi.length).toBeGreaterThan(0);
+
+    // Bob joins by external commit; the returned commit is non-empty bytes.
+    const joinRes = await bob.handleRequest({ id: "p3", kind: "joinByExternalCommit", groupInfo: gi });
+    expect(joinRes.ok).toBe(true);
+    const commit = (joinRes as { result: Uint8Array }).result;
+    expect(commit.length).toBeGreaterThan(0);
+
+    // Alice applies bob's external commit. Decrypting a commit yields empty bytes.
+    const applyRes = await alice.handleRequest({ id: "p4", kind: "decrypt", groupId: "pub-1", message: commit });
+    expect(applyRes.ok).toBe(true);
+
+    // The real proof: alice encrypts and bob (now a member) decrypts.
+    const encRes = await alice.handleRequest({
+      id: "p5", kind: "encrypt", groupId: "pub-1", plaintext: new TextEncoder().encode("hello bob"),
+    });
+    expect(encRes.ok).toBe(true);
+    const ct = (encRes as { result: Uint8Array }).result;
+
+    const decRes = await bob.handleRequest({ id: "p6", kind: "decrypt", groupId: "pub-1", message: ct });
+    expect(decRes.ok).toBe(true);
+    const pt = (decRes as { result: Uint8Array }).result;
+
+    expect(new TextDecoder().decode(pt)).toBe("hello bob");
+  });
 });

@@ -168,6 +168,55 @@ impl Engine {
         Ok(group.members().count())
     }
 
+    /// Export the group's GroupInfo (with ratchet tree) so a new member can join a
+    /// PUBLIC channel via external commit. Not secret: the ratchet tree is public.
+    pub fn export_group_info(&self, group_id: &[u8]) -> Result<Vec<u8>, EngineError> {
+        let group = self
+            .groups
+            .get(group_id)
+            .ok_or_else(|| EngineError::UnknownGroup(hex(group_id)))?;
+        let msg = group
+            .export_group_info(&self.provider, &self.identity.signer, true)
+            .map_err(EngineError::mls)?;
+        msg.tls_serialize_detached().map_err(EngineError::serde)
+    }
+
+    /// Join a PUBLIC channel via an MLS external commit, using the group's
+    /// exported GroupInfo (which carries the public ratchet tree). Returns the
+    /// external-commit message to fan out to existing members.
+    pub fn join_by_external_commit(
+        &mut self,
+        group_info_bytes: &[u8],
+    ) -> Result<Vec<u8>, EngineError> {
+        let msg_in =
+            MlsMessageIn::tls_deserialize_exact(group_info_bytes).map_err(EngineError::serde)?;
+        let vgi = match msg_in.extract() {
+            MlsMessageBodyIn::GroupInfo(gi) => gi,
+            _ => return Err(EngineError::Mls("expected a GroupInfo message".to_string())),
+        };
+        let config = MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+        let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
+            &self.provider,
+            &self.identity.signer,
+            None, // ratchet_tree carried in the GroupInfo extension
+            vgi,
+            &config,
+            None, // capabilities: default
+            None, // extensions: default
+            &[],  // aad
+            self.identity.credential_with_key.clone(),
+        )
+        .map_err(EngineError::mls)?;
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(EngineError::mls)?;
+        let gid = group.group_id().as_slice().to_vec();
+        self.groups.insert(gid, group);
+        commit.tls_serialize_detached().map_err(EngineError::serde)
+    }
+
     pub fn join_from_welcome(&mut self, welcome_bytes: &[u8]) -> Result<(), EngineError> {
         let msg_in =
             MlsMessageIn::tls_deserialize_exact(welcome_bytes).map_err(EngineError::serde)?;
@@ -255,8 +304,37 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 #[cfg(test)]
+impl Incoming {
+    pub fn unwrap_application(self) -> Vec<u8> {
+        match self {
+            Incoming::Application(p) => p,
+            other => panic!("not application: {:?}", other),
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bob_joins_public_group_by_external_commit() {
+        let mut alice = Engine::new(b"alice@corp");
+        let mut bob = Engine::new(b"bob@corp");
+        let group_id = b"public-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+
+        let gi = alice.export_group_info(&group_id).unwrap();
+        assert!(!gi.is_empty());
+
+        let commit = bob.join_by_external_commit(&gi).unwrap();
+        assert!(bob.has_group(&group_id));
+        assert!(!commit.is_empty());
+
+        alice.process(&group_id, &commit).unwrap();
+        let ct = alice.encrypt(&group_id, b"hello bob").unwrap();
+        assert_eq!(bob.process(&group_id, &ct).unwrap().unwrap_application(), b"hello bob");
+    }
 
     #[test]
     fn engine_exposes_signing_public_key() {
