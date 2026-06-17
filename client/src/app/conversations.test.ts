@@ -27,6 +27,26 @@ describe("conversations controller", () => {
     expect(d.client.list).toHaveBeenCalledWith("TOK", "w1");
     expect(c.channels()).toEqual([{ id: "c1", name: "general", visibility: "public" }]);
     expect(c.dms()).toEqual([{ id: "d1", name: "bob" }]);
+    // auto-selects the first channel so the composer isn't a silent no-op
+    expect(c.activeId()).toBe("c1");
+  });
+
+  it("load() auto-selects a DM when there are no channels", async () => {
+    const d = deps([{ group_id: "d1", type: "dm", visibility: "private", name: "bob" }]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    expect(c.activeId()).toBe("d1");
+  });
+
+  it("load() leaves an already-selected conversation untouched", async () => {
+    const d = deps([
+      { group_id: "c1", type: "channel", visibility: "public", name: "general" },
+      { group_id: "c2", type: "channel", visibility: "public", name: "random" },
+    ]);
+    const c = createConversationsController(d as any);
+    c.select("c2");
+    await c.load();
+    expect(c.activeId()).toBe("c2");
   });
 
   it("createChannel creates, reloads, and selects the new group", async () => {

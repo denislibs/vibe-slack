@@ -25,6 +25,12 @@ export function createConversationsController(deps: ConversationsControllerDeps)
     const all = await deps.client.list(deps.token(), deps.wsId());
     setChannels(all.filter((c) => c.type === "channel").map((c) => ({ id: c.group_id, name: c.name, visibility: c.visibility })));
     setDms(all.filter((c) => c.type === "dm").map((c) => ({ id: c.group_id, name: c.name })));
+    // Auto-select a conversation so the composer is never a silent no-op (sending
+    // with no active conversation does nothing). Prefer the first channel, else a DM.
+    if (!activeId()) {
+      const first = channels()[0]?.id ?? dms()[0]?.id;
+      if (first) setActiveId(first);
+    }
   }
 
   return {
