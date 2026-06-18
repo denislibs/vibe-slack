@@ -27,6 +27,11 @@ export class ProtocolConnection {
   onStatus(h: (s: "online" | "offline") => void) { this.statusHandler = h; }
   setCursor(groupID: string, seq: number) { this.cursors.set(groupID, seq); }
 
+  track(groupID: string, sinceSeq: number) {
+    this.cursors.set(groupID, sinceSeq);
+    if (this.open) this.transmit({ type: "sync", group_id: groupID, since_seq: sinceSeq });
+  }
+
   connect() {
     const sock = this.mkSocket();
     this.sock = sock;

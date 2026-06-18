@@ -13,6 +13,7 @@ function mockProtocol() {
     connect() {},
     send() {},
     ack: (_g, s) => acks.push(s),
+    track() {},
     onMessage: (h) => (onMsg = h),
     onStatus() {},
   };

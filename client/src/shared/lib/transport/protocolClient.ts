@@ -20,6 +20,7 @@ export class ProtocolClient {
     this.worker.postMessage({ cmd: "send", ...s });
   }
   ack(groupID: string, upToSeq: number) { this.worker.postMessage({ cmd: "ack", groupID, upToSeq }); }
+  track(groupID: string, sinceSeq: number) { this.worker.postMessage({ cmd: "track", groupID, sinceSeq }); }
   onMessage(h: (m: MessageFrame) => void) { this.msgHandler = h; }
   onStatus(h: (s: string) => void) { this.statusHandler = h; }
 }

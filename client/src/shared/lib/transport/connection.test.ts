@@ -48,4 +48,23 @@ describe("ProtocolConnection", () => {
     const syncs = sock.sent.map((s) => JSON.parse(s)).filter((f) => f.type === "sync");
     expect(syncs.some((f) => f.group_id === "g1" && f.since_seq === 7)).toBe(true);
   });
+
+  it("track() before connect seeds a sync sent on open", () => {
+    const { sock, conn } = setup();
+    conn.track("g1", 0);
+    conn.connect();
+    sock.open();
+    const syncs = sock.sent.map((s) => JSON.parse(s)).filter((f) => f.type === "sync");
+    expect(syncs.some((f) => f.group_id === "g1" && f.since_seq === 0)).toBe(true);
+  });
+
+  it("track() after open syncs immediately", () => {
+    const { sock, conn } = setup();
+    conn.connect();
+    sock.open();
+    sock.sent.length = 0;
+    conn.track("g2", 5);
+    const f = sock.sent.map((s) => JSON.parse(s)).find((x) => x.type === "sync");
+    expect(f).toMatchObject({ type: "sync", group_id: "g2", since_seq: 5 });
+  });
 });

@@ -18,6 +18,9 @@ function realSocket(url: string, token: string): WebSocketLike {
 }
 
 let conn: ProtocolConnection | null = null;
+// Cursors persist across reconnects: the worker recreates ProtocolConnection on
+// every "connect", so tracked/acked cursors are re-seeded onto the fresh instance.
+const cursors = new Map<string, number>();
 
 self.onmessage = (ev: MessageEvent) => {
   const d = ev.data as any;
@@ -27,10 +30,12 @@ self.onmessage = (ev: MessageEvent) => {
       conn = new ProtocolConnection(() => realSocket(url, d.token), d.token);
       conn.onMessage((m) => (self as unknown as Worker).postMessage({ event: "message", payload: m }));
       conn.onStatus((s) => (self as unknown as Worker).postMessage({ event: "status", payload: s }));
+      for (const [g, s] of cursors) conn.setCursor(g, s);
       conn.connect();
       break;
     }
     case "send": conn?.send({ clientMsgId: d.clientMsgId, groupId: d.groupId, contentType: d.contentType, ciphertext: d.ciphertext }); break;
-    case "ack": conn?.ack(d.groupID, d.upToSeq); break;
+    case "ack": cursors.set(d.groupID, d.upToSeq); conn?.ack(d.groupID, d.upToSeq); break;
+    case "track": { cursors.set(d.groupID, d.sinceSeq); conn?.track(d.groupID, d.sinceSeq); break; }
   }
 };
