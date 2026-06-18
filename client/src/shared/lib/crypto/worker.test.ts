@@ -1,6 +1,15 @@
 // @vitest-environment node
-import { describe, it, expect } from "vitest";
-import { handleRequest, dispatchTo } from "./worker";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const persisted = new Map<string, Uint8Array>();
+vi.mock("./persistence", () => ({
+  loadCryptoState: vi.fn(async (name: string) => persisted.get(name) ?? null),
+  saveCryptoState: vi.fn(async (name: string, b: Uint8Array) => {
+    persisted.set(name, b.slice());
+  }),
+}));
+
+import { handleRequest, dispatchTo, createDispatcher } from "./worker";
 import type { CryptoRequest } from "./protocol";
 import type { WasmEngine } from "./wasm-pkg/crypto_core.js";
 
@@ -47,5 +56,22 @@ describe("worker dispatch", () => {
     expect(res.ok).toBe(true);
     expect(calls).toEqual([groupInfo]);
     if (res.ok) expect(Array.from(res.result as Uint8Array)).toEqual([3, 4]);
+  });
+});
+
+describe("worker persistence", () => {
+  beforeEach(() => persisted.clear());
+
+  it("persists engine state and rehydrates a fresh dispatcher", async () => {
+    const d1 = createDispatcher("alice@corp");
+    const created = await d1.handleRequest({ id: "1", kind: "createGroup", groupId: "team-1" });
+    expect(created.ok).toBe(true);
+    expect(persisted.has("alice@corp")).toBe(true);
+
+    // Simulate reload: a brand-new dispatcher must restore and encrypt to the
+    // existing group instead of throwing "unknown group".
+    const d2 = createDispatcher("alice@corp");
+    const enc = await d2.handleRequest({ id: "2", kind: "encrypt", groupId: "team-1", plaintext: new Uint8Array([1, 2, 3]) });
+    expect(enc.ok).toBe(true);
   });
 });

@@ -1,16 +1,8 @@
 import init, { WasmEngine } from "./wasm-pkg/crypto_core.js";
 import type { CryptoRequest, CryptoResponse } from "./protocol";
+import { loadCryptoState, saveCryptoState } from "./persistence";
 
 let ready: Promise<void> | null = null;
-
-// Forward declaration of crypto ops implemented in the Rust/WASM engine but not
-// yet present in the generated `crypto_core.d.ts` (the WASM rebuild that emits
-// these signatures is a follow-up task). Once the bindings are regenerated the
-// real `WasmEngine` will carry these methods and this cast becomes a no-op.
-interface PendingEngineOps {
-  export_group_info(group_id: string): Uint8Array;
-  join_by_external_commit(group_info: Uint8Array): Uint8Array;
-}
 
 // Minimal, browser-safe view of the node `process` global so we can detect the
 // node/vitest runtime without pulling in `@types/node` (this is a browser
@@ -88,14 +80,10 @@ export async function dispatchTo(
         result = null;
         break;
       case "exportGroupInfo":
-        result = (engine as unknown as PendingEngineOps).export_group_info(
-          req.groupId,
-        );
+        result = engine.export_group_info(req.groupId);
         break;
       case "joinByExternalCommit":
-        result = (
-          engine as unknown as PendingEngineOps
-        ).join_by_external_commit(req.groupInfo);
+        result = engine.join_by_external_commit(req.groupInfo);
         break;
       case "encrypt":
         result = engine.encrypt(req.groupId, req.plaintext);
@@ -115,13 +103,53 @@ export async function dispatchTo(
  * module is initialised once per process (shared, memoized), but each
  * dispatcher's engine instance has fully independent OpenMLS state.
  */
+// Ops that never change engine state — skip the persist round-trip for these.
+const READ_ONLY_KINDS = new Set(["keyPackage", "signingPublicKey", "exportGroupInfo"]);
+
 export function createDispatcher(name: string) {
   let engine: WasmEngine | null = null;
+  let initEngine: Promise<WasmEngine> | null = null;
+
+  async function getEngine(): Promise<WasmEngine> {
+    if (engine) return engine;
+    if (!initEngine) {
+      initEngine = (async () => {
+        if (!ready) ready = initWasm();
+        await ready;
+        // Loading may reject if no storage backend is available (e.g. a node
+        // runtime without IndexedDB); treat that like "no saved state".
+        let saved: Uint8Array | null = null;
+        try {
+          saved = await loadCryptoState(name);
+        } catch {
+          saved = null;
+        }
+        if (saved) {
+          try {
+            return WasmEngine.restore(saved);
+          } catch {
+            // Corrupt/incompatible blob: fall back to a fresh engine.
+            return new WasmEngine(name);
+          }
+        }
+        return new WasmEngine(name);
+      })();
+    }
+    engine = await initEngine;
+    return engine;
+  }
+
   async function handleRequest(req: CryptoRequest): Promise<CryptoResponse> {
-    if (!ready) ready = initWasm();
-    await ready;
-    if (!engine) engine = new WasmEngine(name);
-    return dispatchTo(engine, req);
+    const e = await getEngine();
+    const res = await dispatchTo(e, req);
+    if (res.ok && !READ_ONLY_KINDS.has(req.kind)) {
+      try {
+        await saveCryptoState(name, e.export_state());
+      } catch {
+        // Persistence failure must not break the live operation.
+      }
+    }
+    return res;
   }
   return { handleRequest };
 }
