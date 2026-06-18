@@ -130,6 +130,16 @@ impl WasmEngine {
             Incoming::CommitApplied | Incoming::ProposalStored => Ok(Vec::new()),
         }
     }
+
+    /// Serialize the engine's full state (identity + groups) for persistence.
+    pub fn export_state(&self) -> Result<Vec<u8>, JsError> {
+        self.inner.export_state().map_err(to_js)
+    }
+
+    /// Rebuild an engine from `export_state` bytes (e.g. after a page reload).
+    pub fn restore(state: Vec<u8>) -> Result<WasmEngine, JsError> {
+        Ok(WasmEngine { inner: Engine::restore(&state).map_err(to_js)? })
+    }
 }
 
 fn to_js(e: crate::errors::EngineError) -> JsError {
@@ -184,5 +194,15 @@ mod wasm_api_tests {
         let ct = alice.encrypt("public-1", b"hello bob".to_vec()).unwrap();
         let pt = bob.decrypt("public-1", ct).unwrap();
         assert_eq!(pt, b"hello bob");
+    }
+
+    #[test]
+    fn wasm_engine_round_trips_state() {
+        let mut alice = WasmEngine::new("alice@corp");
+        alice.create_group("team-1").unwrap();
+        let state = alice.export_state().unwrap();
+        let mut restored = WasmEngine::restore(state).unwrap();
+        let ct = restored.encrypt("team-1", b"after reload".to_vec()).unwrap();
+        assert!(!ct.is_empty());
     }
 }

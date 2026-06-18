@@ -42,6 +42,12 @@ export class WasmAddResult {
 if (Symbol.dispose) WasmAddResult.prototype[Symbol.dispose] = WasmAddResult.prototype.free;
 
 export class WasmEngine {
+    static __wrap(ptr) {
+        const obj = Object.create(WasmEngine.prototype);
+        obj.__wbg_ptr = ptr;
+        WasmEngineFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -152,6 +158,19 @@ export class WasmEngine {
         return v2;
     }
     /**
+     * Serialize the engine's full state (identity + groups) for persistence.
+     * @returns {Uint8Array}
+     */
+    export_state() {
+        const ret = wasm.wasmengine_export_state(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
      * Join a PUBLIC channel via external commit; returns the commit to fan out.
      * @param {Uint8Array} group_info
      * @returns {Uint8Array}
@@ -216,6 +235,20 @@ export class WasmEngine {
         var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v2;
+    }
+    /**
+     * Rebuild an engine from `export_state` bytes (e.g. after a page reload).
+     * @param {Uint8Array} state
+     * @returns {WasmEngine}
+     */
+    static restore(state) {
+        const ptr0 = passArray8ToWasm0(state, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmengine_restore(ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return WasmEngine.__wrap(ret[0]);
     }
     /**
      * @returns {Uint8Array}
