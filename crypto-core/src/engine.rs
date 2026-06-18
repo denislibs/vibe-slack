@@ -3,8 +3,19 @@ use crate::identity::{deserialize_key_package, Identity};
 use crate::DEFAULT_CIPHERSUITE;
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tls_codec::{Deserialize as _, Serialize as _};
+
+#[derive(Serialize, Deserialize)]
+struct PersistedState {
+    name: Vec<u8>,
+    signer: openmls_basic_credential::SignatureKeyPair,
+    // Stored as a list of (key, value) pairs because serde_json cannot use
+    // non-string map keys (the storage keys are raw `Vec<u8>`).
+    storage: Vec<(Vec<u8>, Vec<u8>)>,
+    group_ids: Vec<Vec<u8>>,
+}
 
 /// Result of a membership change that must be delivered.
 pub struct AddResult {
@@ -30,6 +41,7 @@ pub struct Engine {
     provider: OpenMlsRustCrypto,
     identity: Identity,
     groups: HashMap<Vec<u8>, MlsGroup>,
+    name: Vec<u8>,
 }
 
 impl Engine {
@@ -41,7 +53,68 @@ impl Engine {
             provider,
             identity,
             groups: HashMap::new(),
+            name: name.to_vec(),
         }
+    }
+
+    /// Serialize the full device state (identity signer, MLS key-value storage,
+    /// and tracked group ids) so it can survive a process/page reload.
+    pub fn export_state(&self) -> Result<Vec<u8>, EngineError> {
+        let storage: Vec<(Vec<u8>, Vec<u8>)> = self
+            .provider
+            .storage()
+            .values
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        // `SignatureKeyPair`'s private accessor is gated behind `test-utils`, but
+        // it derives serde, so clone it by round-tripping through serde rather
+        // than via `from_raw`/`private()`.
+        let signer_bytes =
+            serde_json::to_vec(&self.identity.signer).map_err(EngineError::serde)?;
+        let signer = serde_json::from_slice(&signer_bytes).map_err(EngineError::serde)?;
+        let state = PersistedState {
+            name: self.name.clone(),
+            signer,
+            storage,
+            group_ids: self.groups.keys().cloned().collect(),
+        };
+        serde_json::to_vec(&state).map_err(EngineError::serde)
+    }
+
+    /// Reconstruct an engine from bytes produced by `export_state`.
+    pub fn restore(bytes: &[u8]) -> Result<Self, EngineError> {
+        let state: PersistedState = serde_json::from_slice(bytes).map_err(EngineError::serde)?;
+        let provider = OpenMlsRustCrypto::default();
+        *provider.storage().values.write().unwrap() = state.storage.into_iter().collect();
+
+        let signer = state.signer;
+        let credential = BasicCredential::new(state.name.clone());
+        let credential_with_key = CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signer.to_public_vec().into(),
+        };
+        let identity = Identity {
+            signer,
+            credential_with_key,
+        };
+
+        let mut groups = HashMap::new();
+        for gid in state.group_ids {
+            let group = MlsGroup::load(provider.storage(), &GroupId::from_slice(&gid))
+                .map_err(EngineError::mls)?
+                .ok_or_else(|| EngineError::UnknownGroup(hex(&gid)))?;
+            groups.insert(gid, group);
+        }
+
+        Ok(Self {
+            provider,
+            identity,
+            groups,
+            name: state.name,
+        })
     }
 
     pub fn key_package_bytes(&self) -> Result<Vec<u8>, EngineError> {
@@ -484,6 +557,38 @@ mod tests {
 
         // Membership is 2 (creator + compliance) — compliance is visible.
         assert_eq!(alice.member_count(&group_id).unwrap(), 2);
+    }
+
+    #[test]
+    fn engine_state_survives_export_restore() {
+        let mut alice = Engine::new(b"alice@corp");
+        let group_id = b"team-1".to_vec();
+        alice.create_group(&group_id).unwrap();
+        let ct_before = alice.encrypt(&group_id, b"before reload").unwrap();
+        assert!(!ct_before.is_empty());
+        let state = alice.export_state().unwrap();
+        assert!(!state.is_empty());
+        drop(alice);
+        let mut restored = Engine::restore(&state).unwrap();
+        assert!(restored.has_group(&group_id), "group must survive restore");
+        let ct_after = restored.encrypt(&group_id, b"after reload").unwrap();
+        assert!(!ct_after.is_empty());
+        assert_eq!(restored.signing_public_key().len(), 32);
+    }
+
+    #[test]
+    fn restored_engine_decrypts_peer_message() {
+        let mut alice = Engine::new(b"alice@corp");
+        let mut bob = Engine::new(b"bob@corp");
+        let bob_kp = bob.key_package_bytes().unwrap();
+        let gid = b"team-1".to_vec();
+        alice.create_group(&gid).unwrap();
+        let add = alice.add_member(&gid, &bob_kp).unwrap();
+        bob.join_from_welcome(&add.welcome).unwrap();
+        let state = alice.export_state().unwrap();
+        let mut alice2 = Engine::restore(&state).unwrap();
+        let ct = alice2.encrypt(&gid, b"hi bob after reload").unwrap();
+        assert_eq!(bob.process(&gid, &ct).unwrap().unwrap_application(), b"hi bob after reload");
     }
 
     #[test]
