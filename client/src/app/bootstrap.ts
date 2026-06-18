@@ -137,6 +137,7 @@ export function bootstrap(deviceName: string) {
         { wsId: workspace.current() ?? "", ...args },
       ),
     sendText: (g, t) => orchestrator.sendText(g, t),
+    track: (groupId, sinceSeq) => orchestrator.track(groupId, sinceSeq),
     // KT-verified MLS add. ConversationsClient's method signatures are token-first
     // positional, matching ConversationsPort's arg order — so no token-injecting
     // adapter is needed. The only mismatch is the return shape: addDeviceToRoster

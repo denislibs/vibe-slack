@@ -9,6 +9,8 @@ export interface ConversationsControllerDeps {
   sendText(groupId: string, text: string): Promise<void> | void;
   // KT-verified MLS add. Adapter is wired in bootstrap.
   addMember(args: { wsId: string; group: string; identity: string; currentMaxSeq: number }): Promise<void>;
+  // Seed a sync cursor so the server backfills this group's stored history.
+  track(groupId: string, sinceSeq: number): void;
   conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
   token(): string;
   wsId(): string;
@@ -31,6 +33,8 @@ export function createConversationsController(deps: ConversationsControllerDeps)
       const first = channels()[0]?.id ?? dms()[0]?.id;
       if (first) setActiveId(first);
     }
+    for (const c of channels()) deps.track(c.id, 0);
+    for (const m of dms()) deps.track(m.id, 0);
   }
 
   return {

@@ -8,6 +8,7 @@ function deps(list: any[] = []) {
     create: vi.fn(async (args: any) => ({ group_id: "gNEW", name: args.name ?? "dm", type: args.type })),
     sendText: vi.fn(),
     addMember: vi.fn(async () => {}),
+    track: vi.fn(),
     conversation: { addMessage: vi.fn((g: string, m: any) => added.push([g, m])) },
     token: () => "TOK",
     wsId: () => "w1",
@@ -47,6 +48,17 @@ describe("conversations controller", () => {
     c.select("c2");
     await c.load();
     expect(c.activeId()).toBe("c2");
+  });
+
+  it("load() tracks every conversation so history backfills", async () => {
+    const d = deps([
+      { group_id: "c1", type: "channel", visibility: "public", name: "general" },
+      { group_id: "d1", type: "dm", visibility: "private", name: "bob" },
+    ]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    expect(d.track).toHaveBeenCalledWith("c1", 0);
+    expect(d.track).toHaveBeenCalledWith("d1", 0);
   });
 
   it("createChannel creates, reloads, and selects the new group", async () => {
