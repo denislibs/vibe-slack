@@ -20,7 +20,10 @@ type convService interface {
 	RemoveUser(ctx context.Context, callerID, groupID, targetUserID string) error
 }
 
-type conversationHandlers struct{ svc convService }
+type conversationHandlers struct {
+	svc    convService
+	roster rosterStore
+}
 
 func writeConvErr(w http.ResponseWriter, err error) {
 	switch {
@@ -57,12 +60,24 @@ func (h *conversationHandlers) create(w http.ResponseWriter, r *http.Request) {
 			writeConvErr(w, err)
 			return
 		}
+		if swt.Session.DeviceID != "" {
+			if err := h.roster.AddMember(r.Context(), c.GroupID, swt.Session.DeviceID, 0); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal", "roster error")
+				return
+			}
+		}
 		writeJSON(w, http.StatusOK, conv2resp(c))
 	case "channel":
 		c, err := h.svc.CreateChannel(r.Context(), swt.Session.UserID, wsID, req.Visibility, req.Name)
 		if err != nil {
 			writeConvErr(w, err)
 			return
+		}
+		if swt.Session.DeviceID != "" {
+			if err := h.roster.AddMember(r.Context(), c.GroupID, swt.Session.DeviceID, 0); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal", "roster error")
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, conv2resp(c))
 	default:

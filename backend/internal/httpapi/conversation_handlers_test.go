@@ -3,11 +3,13 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/messenger/backend/internal/conversations"
+	"github.com/messenger/backend/internal/session"
 	"github.com/messenger/backend/internal/store"
 )
 
@@ -47,6 +49,58 @@ func (f *fakeConv) AddUser(_ context.Context, caller, g, q string) (*store.User,
 	return &store.User{ID: "bob", Username: "bob", Email: "b@c"}, nil
 }
 func (f *fakeConv) RemoveUser(_ context.Context, caller, g, target string) error { return nil }
+
+type rosterAdd struct {
+	group, device string
+	seq           int64
+}
+
+type fakeRoster struct {
+	added []rosterAdd
+}
+
+func (f *fakeRoster) AddMember(_ context.Context, group, device string, seq int64) error {
+	f.added = append(f.added, rosterAdd{group, device, seq})
+	return nil
+}
+func (f *fakeRoster) RemoveMember(_ context.Context, group, device string) error { return nil }
+
+func withSessionDevice(r *http.Request, device string) *http.Request {
+	ctx := context.WithValue(r.Context(), sessionCtxKey, sessionWithToken{Session: &session.Session{UserID: "caller", DeviceID: device}})
+	return r.WithContext(ctx)
+}
+
+func TestConvCreateAddsCreatorDeviceToRoster(t *testing.T) {
+	fr := &fakeRoster{}
+	h := &conversationHandlers{svc: &fakeConv{}, roster: fr}
+	req := withSessionDevice(httptest.NewRequest("POST", "/workspaces/w1/conversations",
+		strings.NewReader(`{"type":"channel","visibility":"public","name":"general"}`)), "dev-123")
+	req.SetPathValue("wsId", "w1")
+	rec := httptest.NewRecorder()
+	h.create(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if len(fr.added) != 1 || fr.added[0].group != "g1" || fr.added[0].device != "dev-123" || fr.added[0].seq != 0 {
+		t.Fatalf("roster add = %+v, want one add of (g1, dev-123, 0)", fr.added)
+	}
+}
+
+func TestConvCreateDMAddsCreatorDeviceToRoster(t *testing.T) {
+	fr := &fakeRoster{}
+	h := &conversationHandlers{svc: &fakeConv{}, roster: fr}
+	req := withSessionDevice(httptest.NewRequest("POST", "/workspaces/w1/conversations",
+		strings.NewReader(`{"type":"dm","email_or_username":"bob"}`)), "dev-123")
+	req.SetPathValue("wsId", "w1")
+	rec := httptest.NewRecorder()
+	h.create(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if len(fr.added) != 1 || fr.added[0].group != "dm1" || fr.added[0].device != "dev-123" || fr.added[0].seq != 0 {
+		t.Fatalf("roster add = %+v, want one add of (dm1, dev-123, 0)", fr.added)
+	}
+}
 
 func TestConvCreateChannel(t *testing.T) {
 	h := &conversationHandlers{svc: &fakeConv{}}

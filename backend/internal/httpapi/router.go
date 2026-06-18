@@ -40,7 +40,7 @@ func NewRouterFull(svc *as.Service, sess *session.Manager, cookieSecure bool, de
 	rh := &rosterHandlers{roster: rosterRepo, members: convSvc}
 	kth := &ktHandlers{svc: ktSvc, pubKey: ktPub}
 	wh := &workspaceHandlers{svc: wsSvc}
-	ch := &conversationHandlers{svc: convSvc}
+	ch := &conversationHandlers{svc: convSvc, roster: rosterRepo}
 	kmh := &keyMaterialHandlers{users: userRepo, roles: wsRepo, devices: deviceRepo, keyPkgs: kpSvc}
 	gih := &groupInfoHandlers{conv: convSvc, store: convRepo, compliance: kpSvc, complianceDeviceID: complianceDeviceID}
 	rlmw := rateLimitMW(rl)
