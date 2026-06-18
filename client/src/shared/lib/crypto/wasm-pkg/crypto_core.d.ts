@@ -29,6 +29,10 @@ export class WasmEngine {
      */
     export_group_info(group_id: string): Uint8Array;
     /**
+     * Serialize the engine's full state (identity + groups) for persistence.
+     */
+    export_state(): Uint8Array;
+    /**
      * Join a PUBLIC channel via external commit; returns the commit to fan out.
      */
     join_by_external_commit(group_info: Uint8Array): Uint8Array;
@@ -36,6 +40,10 @@ export class WasmEngine {
     key_package_bytes(): Uint8Array;
     constructor(name: string);
     remove_member(group_id: string, leaf_index: number): Uint8Array;
+    /**
+     * Rebuild an engine from `export_state` bytes (e.g. after a page reload).
+     */
+    static restore(state: Uint8Array): WasmEngine;
     signing_public_key(): Uint8Array;
 }
 
@@ -53,11 +61,13 @@ export interface InitOutput {
     readonly wasmengine_decrypt: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly wasmengine_encrypt: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly wasmengine_export_group_info: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly wasmengine_export_state: (a: number) => [number, number, number, number];
     readonly wasmengine_join_by_external_commit: (a: number, b: number, c: number) => [number, number, number, number];
     readonly wasmengine_join_from_welcome: (a: number, b: number, c: number) => [number, number];
     readonly wasmengine_key_package_bytes: (a: number) => [number, number, number, number];
     readonly wasmengine_new: (a: number, b: number) => number;
     readonly wasmengine_remove_member: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly wasmengine_restore: (a: number, b: number) => [number, number, number];
     readonly wasmengine_signing_public_key: (a: number) => [number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;

@@ -8,6 +8,7 @@ export interface ProtocolPort {
   connect(token: string): void;
   send(s: { clientMsgId: string; groupId: string; contentType: string; ciphertext: string }): void;
   ack(groupID: string, upToSeq: number): void;
+  track(groupID: string, sinceSeq: number): void;
   onMessage(h: (m: MessageFrame) => void): void;
   onStatus(h: (s: string) => void): void;
 }
@@ -71,6 +72,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
 
   return {
     connect(token: string) { protocol.connect(token); },
+    track(groupID: string, sinceSeq: number) { protocol.track(groupID, sinceSeq); },
     async sendText(groupID: string, text: string) {
       const ct = await crypto.encrypt(groupID, new TextEncoder().encode(text));
       protocol.send({
