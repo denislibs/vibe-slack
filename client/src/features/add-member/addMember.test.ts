@@ -50,6 +50,17 @@ describe("addMember", () => {
     expect(d.conversations.addUser).not.toHaveBeenCalled();
   });
 
+  it("with skipAddUser, skips addUser but still MLS-adds each device (DM path)", async () => {
+    const d = deps([KEY_A, KEY_B]);
+    await addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 5, skipAddUser: true });
+    // DM membership is immutable server-side, so addUser must NOT be called...
+    expect(d.conversations.addUser).not.toHaveBeenCalled();
+    // ...but the per-device MLS add/roster still runs so the partner is Welcomed.
+    expect(d.crypto.addMember).toHaveBeenCalledTimes(2);
+    expect(d.conversations.addDeviceToRoster).toHaveBeenCalledWith("TOK", "g1", "d1", 5);
+    expect(d.conversations.addDeviceToRoster).toHaveBeenCalledWith("TOK", "g1", "d2", 5);
+  });
+
   it("verifies KT by user_id while addUser resolves by username (regression)", async () => {
     const d = deps([KEY_A, KEY_B]);
     await addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 5 });

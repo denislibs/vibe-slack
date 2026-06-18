@@ -75,9 +75,10 @@ describe("conversations controller", () => {
     const d = deps();
     d.client.list = vi.fn(async () => [{ group_id: "gNEW", type: "dm", visibility: "private", name: "bob" }]);
     const c = createConversationsController(d as any);
-    await c.startDm("bob");
+    await c.startDm({ identity: "bob", userId: "bob-uuid" });
     expect(d.create).toHaveBeenCalledWith({ type: "dm", emailOrUsername: "bob" });
     expect(c.activeId()).toBe("gNEW");
+    expect(d.addMember).toHaveBeenCalledWith(expect.objectContaining({ group: "gNEW", identity: "bob", userId: "bob-uuid", skipAddUser: true, currentMaxSeq: 0 }));
   });
 
   it("send does optimistic echo + sendText to the active group", async () => {
