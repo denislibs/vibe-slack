@@ -8,7 +8,7 @@ export interface ConversationsControllerDeps {
   create(args: { type: "dm" | "channel"; visibility?: "public" | "private"; name?: string; emailOrUsername?: string }): Promise<{ group_id: string; name: string; type: string }>;
   sendText(groupId: string, text: string): Promise<void> | void;
   // KT-verified MLS add. Adapter is wired in bootstrap.
-  addMember(args: { wsId: string; group: string; identity: string; userId: string; currentMaxSeq: number }): Promise<void>;
+  addMember(args: { wsId: string; group: string; identity: string; userId: string; currentMaxSeq: number; skipAddUser?: boolean }): Promise<void>;
   // Seed a sync cursor so the server backfills this group's stored history.
   track(groupId: string, sinceSeq: number): void;
   conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
@@ -51,10 +51,15 @@ export function createConversationsController(deps: ConversationsControllerDeps)
       await load();
       setActiveId(conv.group_id);
     },
-    async startDm(emailOrUsername: string) {
-      const conv = await deps.create({ type: "dm", emailOrUsername });
+    async startDm(person: { identity: string; userId: string }) {
+      const conv = await deps.create({ type: "dm", emailOrUsername: person.identity });
       await load();
       setActiveId(conv.group_id);
+      // The server CreateDM already makes both parties DM members, but only the
+      // creator's devices are in the MLS group. Run the KT-verified device add
+      // (skipAddUser, since DM membership is immutable) so the partner is Welcomed
+      // and DM messages actually deliver.
+      await deps.addMember({ wsId: deps.wsId(), group: conv.group_id, identity: person.identity, userId: person.userId, currentMaxSeq: 0, skipAddUser: true });
     },
     async send(text: string) {
       const id = activeId();

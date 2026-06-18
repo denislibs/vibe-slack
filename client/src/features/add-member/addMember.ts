@@ -58,6 +58,7 @@ export interface AddMemberArgs {
   identity: string;
   userId: string;
   currentMaxSeq: number;
+  skipAddUser?: boolean;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -93,7 +94,11 @@ export async function addMember(deps: AddMemberDeps, args: AddMemberArgs): Promi
   }
 
   // Gate passed — grant server membership, then MLS-add each device.
-  await conversations.addUser(token, group, identity);
+  // DMs already have both parties as members (DM membership is immutable on the
+  // server, and addUser on a DM returns ErrForbidden), so skip addUser there.
+  if (!args.skipAddUser) {
+    await conversations.addUser(token, group, identity);
+  }
 
   for (const device of material) {
     const { commit, welcome } = await crypto.addMember(group, device.keyPackage);

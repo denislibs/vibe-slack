@@ -90,7 +90,7 @@ if (root) {
         onClose={() => setNewDmOpen(false)}
         results={dmResults()}
         onQuery={(q) => void runQuery(q)}
-        onPick={(u) => { void conversations.startDm(u.username); setNewDmOpen(false); }}
+        onPick={(u) => { void conversations.startDm({ identity: u.username, userId: u.user_id }); setNewDmOpen(false); }}
       />
       <NewDmModal
         open={addPeopleOpen()}
