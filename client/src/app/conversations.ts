@@ -8,7 +8,7 @@ export interface ConversationsControllerDeps {
   create(args: { type: "dm" | "channel"; visibility?: "public" | "private"; name?: string; emailOrUsername?: string }): Promise<{ group_id: string; name: string; type: string }>;
   sendText(groupId: string, text: string): Promise<void> | void;
   // KT-verified MLS add. Adapter is wired in bootstrap.
-  addMember(args: { wsId: string; group: string; identity: string; currentMaxSeq: number }): Promise<void>;
+  addMember(args: { wsId: string; group: string; identity: string; userId: string; currentMaxSeq: number }): Promise<void>;
   // Seed a sync cursor so the server backfills this group's stored history.
   track(groupId: string, sinceSeq: number): void;
   conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
@@ -66,10 +66,10 @@ export function createConversationsController(deps: ConversationsControllerDeps)
     // add use-case. currentMaxSeq=0 is intentional: by MLS forward-secrecy the new
     // member can only decrypt messages from the epoch it joins onward, so it sees
     // messages sent AFTER the join — never the pre-join history.
-    async addPeople(identity: string) {
+    async addPeople(person: { identity: string; userId: string }) {
       const id = activeId();
       if (!id) return;
-      await deps.addMember({ wsId: deps.wsId(), group: id, identity, currentMaxSeq: 0 });
+      await deps.addMember({ wsId: deps.wsId(), group: id, identity: person.identity, userId: person.userId, currentMaxSeq: 0 });
     },
   };
 }

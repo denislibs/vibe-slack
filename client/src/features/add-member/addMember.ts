@@ -56,6 +56,7 @@ export interface AddMemberArgs {
   wsId: string;
   group: string;
   identity: string;
+  userId: string;
   currentMaxSeq: number;
 }
 
@@ -71,7 +72,7 @@ function isVerified(key: Uint8Array, verified: Uint8Array[]): boolean {
 
 export async function addMember(deps: AddMemberDeps, args: AddMemberArgs): Promise<void> {
   const { conversations, crypto, kt, protocol } = deps;
-  const { wsId, group, identity, currentMaxSeq } = args;
+  const { wsId, group, identity, userId, currentMaxSeq } = args;
   const token = deps.token();
 
   // Verify-then-mutate: run the KT gate BEFORE granting any server-side membership.
@@ -79,7 +80,8 @@ export async function addMember(deps: AddMemberDeps, args: AddMemberArgs): Promi
   // conversation member with roster/group-info privileges despite never being
   // cryptographically admitted.) key-material is fetched here too, so a KT failure
   // throws before any state changes.
-  const verified = await kt.verifyIdentity(token, identity);
+  // KT is keyed by the immutable user_id; addUser/key-material resolve by username.
+  const verified = await kt.verifyIdentity(token, userId);
   const material = await conversations.keyMaterial(token, wsId, identity);
 
   // Hard KT gate: refuse the whole op before any membership/MLS change if any

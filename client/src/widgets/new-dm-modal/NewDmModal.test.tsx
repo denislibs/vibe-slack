@@ -15,12 +15,12 @@ describe("NewDmModal", () => {
     expect(onQuery).toHaveBeenCalledWith("bo");
   });
 
-  it("clicking a result calls onPick with the username", () => {
+  it("clicking a result calls onPick with the full person", () => {
     const onPick = vi.fn();
     const { getByText } = render(() => (
       <NewDmModal open onClose={() => {}} results={results} onQuery={() => {}} onPick={onPick} />
     ));
     fireEvent.click(getByText("bob"));
-    expect(onPick).toHaveBeenCalledWith("bob");
+    expect(onPick).toHaveBeenCalledWith({ user_id: "u2", username: "bob", email: "bob@c" });
   });
 });
