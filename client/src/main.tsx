@@ -32,10 +32,10 @@ if (root) {
   };
   // Add the picked user to the active channel. A KT failure (UnverifiedDevice or
   // any KTError) fails closed — surface it and keep the modal context intact.
-  const addPeople = async (username: string) => {
+  const addPeople = async (person: { user_id: string; username: string; email: string }) => {
     setBusy(true); setAuthError("");
     try {
-      await conversations.addPeople(username);
+      await conversations.addPeople({ identity: person.username, userId: person.user_id });
       setAddPeopleOpen(false);
     } catch (e) {
       setAuthError(e instanceof Error && e.name === "UnverifiedDevice"
@@ -90,13 +90,14 @@ if (root) {
         onClose={() => setNewDmOpen(false)}
         results={dmResults()}
         onQuery={(q) => void runQuery(q)}
-        onPick={(u) => { void conversations.startDm(u); setNewDmOpen(false); }}
+        onPick={(u) => { void conversations.startDm(u.username); setNewDmOpen(false); }}
       />
       <NewDmModal
         open={addPeopleOpen()}
         onClose={() => setAddPeopleOpen(false)}
         results={dmResults()}
         onQuery={(q) => void runQuery(q)}
+        title="Add people"
         onPick={(u) => void addPeople(u)}
       />
     </>

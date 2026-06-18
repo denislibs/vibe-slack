@@ -28,9 +28,9 @@ function deps(verified: Uint8Array[]) {
 describe("addMember", () => {
   it("KT-verifies, MLS-adds each device, rosters, delivers, publishes GroupInfo", async () => {
     const d = deps([KEY_A, KEY_B]);
-    await addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", currentMaxSeq: 5 });
+    await addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 5 });
     expect(d.conversations.addUser).toHaveBeenCalledWith("TOK", "g1", "bob");
-    expect(d.kt.verifyIdentity).toHaveBeenCalledWith("TOK", "bob");
+    expect(d.kt.verifyIdentity).toHaveBeenCalledWith("TOK", "bob-uuid");
     expect(d.crypto.addMember).toHaveBeenCalledTimes(2);
     expect(d.conversations.addDeviceToRoster).toHaveBeenCalledWith("TOK", "g1", "d1", 5);
     expect(d.conversations.addDeviceToRoster).toHaveBeenCalledWith("TOK", "g1", "d2", 5);
@@ -43,10 +43,17 @@ describe("addMember", () => {
 
   it("REFUSES to add a device whose signing key is not KT-verified, granting NO server membership", async () => {
     const d = deps([KEY_A]); // KEY_B missing → d2 unverified
-    await expect(addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", currentMaxSeq: 5 }))
+    await expect(addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 5 }))
       .rejects.toBeInstanceOf(UnverifiedDevice);
     expect(d.crypto.addMember).not.toHaveBeenCalled(); // refuse BEFORE any MLS add
     // verify-then-mutate: a KT-rejected user must NOT gain server-side membership.
     expect(d.conversations.addUser).not.toHaveBeenCalled();
+  });
+
+  it("verifies KT by user_id while addUser resolves by username (regression)", async () => {
+    const d = deps([KEY_A, KEY_B]);
+    await addMember(d as any, { wsId: "w1", group: "g1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 5 });
+    expect(d.kt.verifyIdentity).toHaveBeenCalledWith("TOK", "bob-uuid");
+    expect(d.conversations.addUser).toHaveBeenCalledWith("TOK", "g1", "bob");
   });
 });

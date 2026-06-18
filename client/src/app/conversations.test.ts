@@ -106,14 +106,14 @@ describe("conversations controller", () => {
     const d = deps();
     const c = createConversationsController(d as any);
     c.select("c1");
-    await c.addPeople("bob");
-    expect(d.addMember).toHaveBeenCalledWith({ wsId: "w1", group: "c1", identity: "bob", currentMaxSeq: 0 });
+    await c.addPeople({ identity: "bob", userId: "bob-uuid" });
+    expect(d.addMember).toHaveBeenCalledWith({ wsId: "w1", group: "c1", identity: "bob", userId: "bob-uuid", currentMaxSeq: 0 });
   });
 
   it("addPeople with no active conversation is a no-op", async () => {
     const d = deps();
     const c = createConversationsController(d as any);
-    await c.addPeople("bob");
+    await c.addPeople({ identity: "bob", userId: "bob-uuid" });
     expect(d.addMember).not.toHaveBeenCalled();
   });
 });
