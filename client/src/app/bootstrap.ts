@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { CryptoClient } from "../shared/lib/crypto/client";
 import { ProtocolClient } from "../shared/lib/transport/protocolClient";
 import { createConversationStore } from "../entities/conversation/store";
+import { loadMessages, saveMessages } from "../entities/conversation/messagePersistence";
 import { createConnectionStore } from "../entities/connection/store";
 import { createOrchestrator, type CryptoPort } from "./orchestrator";
 import { AsClient } from "../shared/api/as";
@@ -66,7 +67,13 @@ export function bootstrap(deviceName: string) {
 
   const cryptoClient = new CryptoClient(cryptoWorker, deviceName);
   const protocol = new ProtocolClient(protocolWorker);
-  const conversation = createConversationStore();
+  // Conversation messages persist to IndexedDB keyed by device name: the MLS
+  // engine cannot decrypt the user's OWN sent messages from server history, so
+  // the only durable copy of what the user sent is local. Hydrated on restore.
+  const conversation = createConversationStore({
+    load: () => loadMessages(deviceName),
+    save: (byGroup) => { void saveMessages(deviceName, byGroup); },
+  });
   const connection = createConnectionStore();
 
   // CryptoClient → CryptoPort. CryptoClient's encrypt/decrypt already match the
@@ -177,6 +184,7 @@ export function bootstrap(deviceName: string) {
     try {
       await as.session("");          // cookie-authed; throws 401 if no session
       session.restore();             // skip the auth screen
+      await conversation.hydrate();  // show locally-persisted messages immediately
       await workspaces.load();
       await conversations.load();
       orchestrator.connect("");      // WS via the cookie (empty token ok)
