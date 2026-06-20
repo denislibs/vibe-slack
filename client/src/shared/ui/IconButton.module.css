@@ -2,13 +2,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   background: transparent;
   color: var(--text);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition);
 }
