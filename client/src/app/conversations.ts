@@ -14,7 +14,12 @@ export interface ConversationsControllerDeps {
   joinPublic(args: { group: string; currentMaxSeq: number }): Promise<void>;
   // Seed a sync cursor so the server backfills this group's stored history.
   track(groupId: string, sinceSeq: number): void;
-  conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
+  conversation: {
+    addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void;
+    // Highest seq currently held for the group (0 if none) — used to assign
+    // collision-free optimistic-echo seqs.
+    cursor(groupID: string): number;
+  };
   token(): string;
   wsId(): string;
   userLabel(): string;
@@ -24,7 +29,9 @@ export function createConversationsController(deps: ConversationsControllerDeps)
   const [channels, setChannels] = createSignal<ConvSummaryChannel[]>([]);
   const [dms, setDms] = createSignal<ConvSummaryDm[]>([]);
   const [activeId, setActiveId] = createSignal<string>("");
-  let echoSeq = 1_000_000_000; // provisional local seq; replaced by WS sync (UI-4)
+  // Provisional local seq for optimistic echoes (replaced by WS sync, UI-4). The
+  // high base keeps echoes sorted after real (small-seq) server messages.
+  const ECHO_BASE = 1_000_000_000;
 
   // Channels the user already belongs to (server-authoritative `member` flag from
   // `load`, plus any we join here). `joining` guards against a double external
@@ -106,7 +113,11 @@ export function createConversationsController(deps: ConversationsControllerDeps)
     async send(text: string) {
       const id = activeId();
       if (!id) return;
-      deps.conversation.addMessage(id, { seq: echoSeq++, sender: deps.userLabel(), text });
+      // Derive the echo seq from the group's current max so it stays unique and
+      // monotonic across reloads (persisted echoes already occupy ECHO_BASE+n);
+      // clamp to ECHO_BASE so echoes still sort above real server messages.
+      const seq = Math.max(deps.conversation.cursor(id) + 1, ECHO_BASE);
+      deps.conversation.addMessage(id, { seq, sender: deps.userLabel(), text });
       await deps.sendText(id, text);
     },
     // Add another workspace user to the active channel via the KT-verified MLS
