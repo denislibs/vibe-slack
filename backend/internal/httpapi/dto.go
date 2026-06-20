@@ -112,6 +112,10 @@ type convResp struct {
 	Type       string `json:"type"`
 	Visibility string `json:"visibility"`
 	Name       string `json:"name"`
+	// Member tells the client whether the caller already belongs to this
+	// conversation. For a public channel where it is false, the client must run an
+	// external-commit join before sending. Populated by the list endpoint.
+	Member bool `json:"member"`
 }
 type addConvUserReq struct {
 	EmailOrUsername string `json:"email_or_username"`

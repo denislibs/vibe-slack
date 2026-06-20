@@ -8,6 +8,7 @@ function deps(list: any[] = []) {
     create: vi.fn(async (args: any) => ({ group_id: "gNEW", name: args.name ?? "dm", type: args.type })),
     sendText: vi.fn(),
     addMember: vi.fn(async () => {}),
+    joinPublic: vi.fn(async () => {}),
     track: vi.fn(),
     conversation: { addMessage: vi.fn((g: string, m: any) => added.push([g, m])) },
     token: () => "TOK",
@@ -30,6 +31,24 @@ describe("conversations controller", () => {
     expect(c.dms()).toEqual([{ id: "d1", name: "bob" }]);
     // auto-selects the first channel so the composer isn't a silent no-op
     expect(c.activeId()).toBe("c1");
+  });
+
+  it("load() does not fetch when no workspace is active (avoids /workspaces//conversations 404)", async () => {
+    const d = deps([{ group_id: "c1", type: "channel", visibility: "public", name: "general" }]);
+    d.wsId = () => "";
+    const c = createConversationsController(d as any);
+    await c.load();
+    expect(d.client.list).not.toHaveBeenCalled();
+    expect(c.channels()).toEqual([]);
+    expect(c.dms()).toEqual([]);
+  });
+
+  it("load() reselects the first conversation when the active one is gone (workspace switch)", async () => {
+    const d = deps([{ group_id: "c9", type: "channel", visibility: "public", name: "newgen" }]);
+    const c = createConversationsController(d as any);
+    c.select("cOLD"); // stale selection carried over from a previous workspace
+    await c.load();
+    expect(c.activeId()).toBe("c9");
   });
 
   it("load() auto-selects a DM when there are no channels", async () => {
@@ -79,6 +98,47 @@ describe("conversations controller", () => {
     expect(d.create).toHaveBeenCalledWith({ type: "dm", emailOrUsername: "bob" });
     expect(c.activeId()).toBe("gNEW");
     expect(d.addMember).toHaveBeenCalledWith(expect.objectContaining({ group: "gNEW", identity: "bob", userId: "bob-uuid", skipAddUser: true, currentMaxSeq: 0 }));
+  });
+
+  it("select() joins a public channel the user hasn't joined (currentMaxSeq=0)", async () => {
+    const d = deps([
+      { group_id: "c1", type: "channel", visibility: "public", name: "general", member: true },
+      { group_id: "c2", type: "channel", visibility: "public", name: "random", member: false },
+    ]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    await c.select("c2");
+    expect(d.joinPublic).toHaveBeenCalledWith({ group: "c2", currentMaxSeq: 0 });
+    expect(c.activeId()).toBe("c2");
+  });
+
+  it("select() does not join a channel the user already belongs to", async () => {
+    const d = deps([{ group_id: "c1", type: "channel", visibility: "public", name: "general", member: true }]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    await c.select("c1");
+    expect(d.joinPublic).not.toHaveBeenCalled();
+  });
+
+  it("select() does not re-join after a successful join", async () => {
+    const d = deps([
+      { group_id: "c1", type: "channel", visibility: "public", name: "general", member: true },
+      { group_id: "c2", type: "channel", visibility: "public", name: "random", member: false },
+    ]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    await c.select("c2");
+    d.joinPublic.mockClear();
+    await c.select("c2");
+    expect(d.joinPublic).not.toHaveBeenCalled();
+  });
+
+  it("select() never tries to join a DM", async () => {
+    const d = deps([{ group_id: "d1", type: "dm", visibility: "private", name: "bob", member: true }]);
+    const c = createConversationsController(d as any);
+    await c.load();
+    await c.select("d1");
+    expect(d.joinPublic).not.toHaveBeenCalled();
   });
 
   it("send does optimistic echo + sendText to the active group", async () => {

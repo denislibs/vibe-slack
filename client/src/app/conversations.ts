@@ -4,11 +4,14 @@ export interface ConvSummaryChannel { id: string; name: string; visibility: stri
 export interface ConvSummaryDm { id: string; name: string; }
 
 export interface ConversationsControllerDeps {
-  client: { list(token: string, wsId: string): Promise<{ group_id: string; type: string; visibility: string; name: string }[]> };
+  client: { list(token: string, wsId: string): Promise<{ group_id: string; type: string; visibility: string; name: string; member: boolean }[]> };
   create(args: { type: "dm" | "channel"; visibility?: "public" | "private"; name?: string; emailOrUsername?: string }): Promise<{ group_id: string; name: string; type: string }>;
   sendText(groupId: string, text: string): Promise<void> | void;
   // KT-verified MLS add. Adapter is wired in bootstrap.
   addMember(args: { wsId: string; group: string; identity: string; userId: string; currentMaxSeq: number; skipAddUser?: boolean }): Promise<void>;
+  // External-commit join of a public channel the user isn't yet a member of.
+  // Adapter is wired in bootstrap.
+  joinPublic(args: { group: string; currentMaxSeq: number }): Promise<void>;
   // Seed a sync cursor so the server backfills this group's stored history.
   track(groupId: string, sinceSeq: number): void;
   conversation: { addMessage(groupID: string, m: { seq: number; sender: string; text: string }): void };
@@ -23,29 +26,68 @@ export function createConversationsController(deps: ConversationsControllerDeps)
   const [activeId, setActiveId] = createSignal<string>("");
   let echoSeq = 1_000_000_000; // provisional local seq; replaced by WS sync (UI-4)
 
+  // Channels the user already belongs to (server-authoritative `member` flag from
+  // `load`, plus any we join here). `joining` guards against a double external
+  // commit if select fires twice before the first join resolves.
+  const joined = new Set<string>();
+  const joining = new Set<string>();
+
+  // Join a public channel by external commit the first time the user opens one
+  // they don't yet belong to — otherwise sending silently no-ops (the device
+  // isn't in the channel's MLS group). DMs and private channels need an invite,
+  // so they're skipped. Best-effort: a failure leaves the channel unjoined and
+  // is logged; reselecting retries.
+  async function ensureJoined(id: string): Promise<void> {
+    const ch = channels().find((c) => c.id === id);
+    if (!ch || ch.visibility !== "public" || joined.has(id) || joining.has(id)) return;
+    joining.add(id);
+    try {
+      await deps.joinPublic({ group: id, currentMaxSeq: 0 });
+      joined.add(id);
+    } catch (e) {
+      console.warn("joinPublic failed for", id, e);
+    } finally {
+      joining.delete(id);
+    }
+  }
+
   async function load() {
+    // No active workspace yet → nothing to fetch. Without this guard the call
+    // becomes `GET /workspaces//conversations` (empty id → 404, which `list`
+    // throws on). That used to abort session-restore before the WebSocket
+    // connected, leaving the app with no conversations AND offline.
+    if (!deps.wsId()) {
+      setChannels([]);
+      setDms([]);
+      return;
+    }
     const all = await deps.client.list(deps.token(), deps.wsId());
+    // Refresh membership from the server's authoritative `member` flag.
+    joined.clear();
+    for (const c of all) if (c.member) joined.add(c.group_id);
     setChannels(all.filter((c) => c.type === "channel").map((c) => ({ id: c.group_id, name: c.name, visibility: c.visibility })));
     setDms(all.filter((c) => c.type === "dm").map((c) => ({ id: c.group_id, name: c.name })));
-    // Auto-select a conversation so the composer is never a silent no-op (sending
-    // with no active conversation does nothing). Prefer the first channel, else a DM.
-    if (!activeId()) {
-      const first = channels()[0]?.id ?? dms()[0]?.id;
-      if (first) setActiveId(first);
-    }
+    // Keep a conversation selected so the composer is never a silent no-op, but
+    // re-pick whenever the current selection isn't in the freshly-loaded list —
+    // e.g. after switching workspaces the previous workspace's active id is stale.
+    // Prefer the first channel, else a DM.
+    const valid = [...channels(), ...dms()].some((c) => c.id === activeId());
+    if (!valid) setActiveId(channels()[0]?.id ?? dms()[0]?.id ?? "");
     for (const c of channels()) deps.track(c.id, 0);
     for (const m of dms()) deps.track(m.id, 0);
+    // Make the auto-selected channel usable without an extra click.
+    void ensureJoined(activeId());
   }
 
   return {
     channels, dms, activeId,
     load,
-    // TODO(UI-4): join public on select. The `list` payload has no membership
-    // flag, so we cannot tell whether the user already belongs to a public
-    // channel; auto-joining safely needs membership tracking the list does not
-    // provide. Deferred per task scope — for now select shows channels the user
-    // is already a member of.
-    select: (id: string) => setActiveId(id),
+    // Selecting a public channel the user isn't in joins it (external commit) so
+    // the composer works. The `member` flag from `load` tells us who needs it.
+    async select(id: string) {
+      setActiveId(id);
+      await ensureJoined(id);
+    },
     async createChannel(name: string, visibility: "public" | "private") {
       const conv = await deps.create({ type: "channel", visibility, name });
       await load();

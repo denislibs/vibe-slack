@@ -43,7 +43,7 @@ func writeConvErr(w http.ResponseWriter, err error) {
 }
 
 func conv2resp(c *store.Conversation) convResp {
-	return convResp{GroupID: c.GroupID, Type: c.Type, Visibility: c.Visibility, Name: c.Name}
+	return convResp{GroupID: c.GroupID, Type: c.Type, Visibility: c.Visibility, Name: c.Name, Member: c.Member}
 }
 
 func (h *conversationHandlers) create(w http.ResponseWriter, r *http.Request) {
