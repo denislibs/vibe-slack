@@ -1,6 +1,6 @@
 import { For, Show, createMemo, type Component } from "solid-js";
 import { TransitionGroup } from "solid-transition-group";
-import { Avatar } from "../../shared/ui";
+import { Avatar, RichText } from "../../shared/ui";
 import type { ChatMessage } from "../../entities/conversation/store";
 import s from "./MessageList.module.css";
 
@@ -46,7 +46,7 @@ export const MessageList: Component<{ messages: ChatMessage[]; title?: string }>
                       when={i() === 0}
                       fallback={
                         <div class={s.cont}>
-                          <span class={s.text}>{m.text}</span>
+                          <span class={s.text}><RichText source={m.text} /></span>
                         </div>
                       }
                     >
@@ -57,7 +57,7 @@ export const MessageList: Component<{ messages: ChatMessage[]; title?: string }>
                             <b class={s.sender}>{m.sender}</b>
                             <span class={s.time}>now</span>
                           </div>
-                          <span class={s.text}>{m.text}</span>
+                          <span class={s.text}><RichText source={m.text} /></span>
                         </div>
                       </div>
                     </Show>

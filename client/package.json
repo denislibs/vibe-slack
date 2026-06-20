@@ -22,7 +22,12 @@
   "dependencies": {
     "@noble/ed25519": "^3.1.0",
     "@noble/hashes": "^2.2.0",
+    "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-placeholder": "^3.27.1",
+    "@tiptap/pm": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
     "solid-js": "^1.9.13",
+    "solid-tiptap": "^0.8.0",
     "solid-transition-group": "^0.3.0"
   }
 }

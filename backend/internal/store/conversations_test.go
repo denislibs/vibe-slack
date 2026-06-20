@@ -63,11 +63,20 @@ func TestConvRepo(t *testing.T) {
 	// ListForUser(bob): sees pub1 (public) + dm1 (member), NOT priv1 (private, not a member)
 	list, _ := repo.ListForUser(ctx, ws.ID, bob.ID)
 	ids := map[string]bool{}
+	member := map[string]bool{}
 	for _, c := range list {
 		ids[c.GroupID] = true
+		member[c.GroupID] = c.Member
 	}
 	if !ids["pub1"] || !ids["dm1"] || ids["priv1"] {
 		t.Fatalf("ListForUser(bob) wrong: %v", ids)
+	}
+	// Member flag: bob is a DM member but only a public-visibility viewer of pub1.
+	if member["pub1"] {
+		t.Fatalf("ListForUser(bob): pub1.Member should be false (visible but not joined)")
+	}
+	if !member["dm1"] {
+		t.Fatalf("ListForUser(bob): dm1.Member should be true")
 	}
 
 	// Get + MemberUserIDs

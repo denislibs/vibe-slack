@@ -7,10 +7,11 @@ function apply(t: Theme) {
   if (typeof document !== "undefined") document.documentElement.setAttribute("data-theme", t);
 }
 
-// Active UI theme: persisted in localStorage, applied as <html data-theme>. Defaults to dark.
+// Active UI theme: persisted in localStorage, applied as <html data-theme>. Defaults to light
+// (Slack's signature look — white content + aubergine sidebar).
 export function createThemeStore() {
   const initial: Theme =
-    (typeof localStorage !== "undefined" && localStorage.getItem(KEY)) === "light" ? "light" : "dark";
+    (typeof localStorage !== "undefined" && localStorage.getItem(KEY)) === "dark" ? "dark" : "light";
   const [theme, setTheme] = createSignal<Theme>(initial);
   apply(initial);
   const set = (t: Theme) => {

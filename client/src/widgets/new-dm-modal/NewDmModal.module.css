@@ -5,7 +5,9 @@
 }
 .title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--fs-18);
+  font-weight: var(--fw-black);
+  color: var(--text);
 }
 .list {
   display: flex;
@@ -22,7 +24,7 @@
   cursor: pointer;
 }
 .row:hover {
-  background: var(--border);
+  background: var(--hover-row);
 }
 .meta {
   display: flex;
@@ -32,6 +34,6 @@
   font-weight: 600;
 }
 .email {
-  font-size: 0.85rem;
+  font-size: var(--fs-13);
   color: var(--text-muted);
 }

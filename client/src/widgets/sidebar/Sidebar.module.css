@@ -1,5 +1,5 @@
 .sidebar {
-  width: 260px;
+  width: 320px;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   height: 100%;
@@ -84,8 +84,8 @@
 .active,
 .active:hover {
   background: var(--sidebar-active-bg);
-  color: #fff;
-  font-weight: 500;
+  color: var(--sidebar-active-text);
+  font-weight: 700;
 }
 .active .glyph {
   color: inherit;

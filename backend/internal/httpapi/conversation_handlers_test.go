@@ -33,7 +33,10 @@ func (f *fakeConv) CreateDM(_ context.Context, caller, ws, q string) (*store.Con
 	return &store.Conversation{GroupID: "dm1", WorkspaceID: ws, Type: "dm", Visibility: "private", CreatedBy: caller}, true, nil
 }
 func (f *fakeConv) List(_ context.Context, caller, ws string) ([]store.Conversation, error) {
-	return []store.Conversation{{GroupID: "g1", WorkspaceID: ws, Type: "channel", Visibility: "public", Name: "general"}}, nil
+	return []store.Conversation{
+		{GroupID: "g1", WorkspaceID: ws, Type: "channel", Visibility: "public", Name: "general", Member: false},
+		{GroupID: "g2", WorkspaceID: ws, Type: "channel", Visibility: "public", Name: "joined", Member: true},
+	}, nil
 }
 func (f *fakeConv) Get(_ context.Context, caller, g string) (*store.Conversation, error) {
 	return &store.Conversation{GroupID: g, Type: "channel", Visibility: "public", Name: "general"}, nil
@@ -116,6 +119,31 @@ func TestConvCreateChannel(t *testing.T) {
 	json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.GroupID != "g1" || resp.Type != "channel" {
 		t.Fatalf("resp %+v", resp)
+	}
+}
+
+func TestConvListIncludesMemberFlag(t *testing.T) {
+	h := &conversationHandlers{svc: &fakeConv{}}
+	req := withSession(httptest.NewRequest("GET", "/workspaces/w1/conversations", nil))
+	req.SetPathValue("wsId", "w1")
+	rec := httptest.NewRecorder()
+	h.list(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	var resp []convResp
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := map[string]bool{}
+	for _, c := range resp {
+		got[c.GroupID] = c.Member
+	}
+	if got["g1"] {
+		t.Fatalf("g1 should be member=false, resp=%s", rec.Body.String())
+	}
+	if !got["g2"] {
+		t.Fatalf("g2 should be member=true, resp=%s", rec.Body.String())
 	}
 }
 

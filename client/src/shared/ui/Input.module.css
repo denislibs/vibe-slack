@@ -1,11 +1,13 @@
 .input {
   width: 100%;
-  padding: 8px 10px;
+  min-height: 36px;
+  padding: 8px 12px;
   font-size: var(--fs-15);
+  line-height: 22px;
   background: var(--input-bg);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-xs);
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
@@ -13,6 +15,6 @@
   color: var(--text-muted);
 }
 .input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--link);
+  box-shadow: var(--focus-ring);
 }

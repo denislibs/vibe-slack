@@ -13,7 +13,9 @@ export function createSessionStore() {
     onboarded(dev: string) { setDeviceId(dev); setStatus("onboarded"); },
     // Restore a logged-in session after a page refresh. Token stays "" — the
     // HttpOnly `session` cookie carries auth; we only need to skip the auth screen.
-    restore() { setStatus("onboarded"); },
+    // The device id (from /auth/session) is needed by flows like joinPublic that
+    // register the device in a channel roster.
+    restore(dev?: string) { if (dev) setDeviceId(dev); setStatus("onboarded"); },
     clear() { setToken(""); setDeviceId(""); setStatus("anonymous"); },
   };
 }

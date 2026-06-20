@@ -1,10 +1,10 @@
 .rail {
-  width: 64px;
+  width: 70px;
   background: var(--rail-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   gap: 8px;
   height: 100%;
 }

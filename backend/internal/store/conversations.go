@@ -12,6 +12,11 @@ import (
 
 type Conversation struct {
 	GroupID, WorkspaceID, Type, Visibility, Name, CreatedBy string
+	// Member reports whether a specific caller belongs to the conversation. It is
+	// only populated by caller-scoped queries (ListForUser); other reads leave it
+	// false. The client uses it to decide whether a public channel still needs an
+	// external-commit join before the user can send.
+	Member bool
 }
 
 type ConvRepo struct{ pool *pgxpool.Pool }
@@ -57,7 +62,9 @@ func (r *ConvRepo) insert(ctx context.Context, groupID, wsID, typ, visibility, n
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return &Conversation{GroupID: groupID, WorkspaceID: wsID, Type: typ, Visibility: visibility, Name: name, CreatedBy: creator}, nil
+	// The creator (and, for DMs, the target) are inserted into
+	// conversation_user_members above, so the caller creating it is a member.
+	return &Conversation{GroupID: groupID, WorkspaceID: wsID, Type: typ, Visibility: visibility, Name: name, CreatedBy: creator, Member: true}, nil
 }
 
 func (r *ConvRepo) CreateChannel(ctx context.Context, groupID, wsID, visibility, name, creator string) (*Conversation, error) {
@@ -183,7 +190,8 @@ func (r *ConvRepo) GroupInfo(ctx context.Context, groupID string) ([]byte, error
 // any public channel, plus any conversation the user is a member of.
 func (r *ConvRepo) ListForUser(ctx context.Context, wsID, userID string) ([]Conversation, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT m.group_id, m.workspace_id, m.type, m.visibility, m.name, m.created_by
+		`SELECT m.group_id, m.workspace_id, m.type, m.visibility, m.name, m.created_by,
+		        EXISTS (SELECT 1 FROM conversation_user_members cm WHERE cm.group_id=m.group_id AND cm.user_id=$2) AS is_member
 		   FROM conversation_meta m
 		  WHERE m.workspace_id=$1
 		    AND ( m.visibility='public'
@@ -196,7 +204,7 @@ func (r *ConvRepo) ListForUser(ctx context.Context, wsID, userID string) ([]Conv
 	var out []Conversation
 	for rows.Next() {
 		var c Conversation
-		if err := rows.Scan(&c.GroupID, &c.WorkspaceID, &c.Type, &c.Visibility, &c.Name, &c.CreatedBy); err != nil {
+		if err := rows.Scan(&c.GroupID, &c.WorkspaceID, &c.Type, &c.Visibility, &c.Name, &c.CreatedBy, &c.Member); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

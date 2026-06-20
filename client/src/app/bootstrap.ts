@@ -18,6 +18,7 @@ import { ConversationsClient } from "../shared/api/conversations";
 import { createConversationsController } from "./conversations";
 import { createConversation } from "../features/create-conversation/createConversation";
 import { addMember } from "../features/add-member/addMember";
+import { joinPublic } from "../features/join-public/joinPublic";
 import { KTVerifier } from "../shared/lib/kt/client";
 import { KTClient } from "../shared/api/kt";
 import { DS_HTTP_URL } from "../shared/config/env";
@@ -170,6 +171,24 @@ export function bootstrap(deviceName: string) {
         },
         args,
       ),
+    // External-commit join of a public channel: fetch the published GroupInfo,
+    // derive the join commit, register membership + device in the roster, and fan
+    // the commit to the group. Same adapter pattern as addMember above.
+    joinPublic: (args) =>
+      joinPublic(
+        {
+          conversations: {
+            getGroupInfo: (t, g) => convClient.getGroupInfo(t, g),
+            join: (t, g) => convClient.join(t, g),
+            addDeviceToRoster: async (t, g, d, seq) => { await convClient.addDeviceToRoster(t, g, d, seq); },
+          },
+          crypto: { joinByExternalCommit: (gi) => cryptoClient.joinByExternalCommit(gi) },
+          protocol: { sendCommit: orchestrator.sendCommit },
+          token: () => session.token() ?? "",
+          deviceId: () => session.deviceId(),
+        },
+        args,
+      ),
     conversation,
     token: () => session.token() ?? "",
     wsId: () => workspace.current() ?? "",
@@ -182,11 +201,14 @@ export function bootstrap(deviceName: string) {
   // 401 with no/expired cookie) means we stay on the auth screen.
   async function restoreSession(): Promise<boolean> {
     try {
-      await as.session("");          // cookie-authed; throws 401 if no session
-      session.restore();             // skip the auth screen
+      const sess = await as.session(""); // cookie-authed; throws 401 if no session
+      session.restore(sess.device_id);   // skip the auth screen; keep device id for roster ops
       await conversation.hydrate();  // show locally-persisted messages immediately
       await workspaces.load();
-      await conversations.load();
+      // Conversations load reactively once a workspace is active (see the effect
+      // in main.tsx). Loading here would fire with an empty workspace id whenever
+      // the user has ≠1 workspace (no auto-select), 404, and throw — which also
+      // skipped the connect() below and left the app offline.
       orchestrator.connect("");      // WS via the cookie (empty token ok)
       return true;
     } catch {

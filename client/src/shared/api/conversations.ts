@@ -5,6 +5,9 @@ export interface Conversation {
   type: string;
   visibility: string;
   name: string;
+  // Whether the caller already belongs to this conversation (list endpoint only).
+  // Defaults false for endpoints that don't populate it.
+  member: boolean;
 }
 export interface ConversationDetail extends Conversation {
   members: unknown[];

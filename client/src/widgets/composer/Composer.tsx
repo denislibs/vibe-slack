@@ -1,38 +1,85 @@
-import { createSignal, type Component } from "solid-js";
+import { type Component } from "solid-js";
+import { createEditor, createEditorTransaction } from "solid-tiptap";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "../../shared/ui";
 import s from "./Composer.module.css";
 
+// Message composer backed by TipTap (ProseMirror via solid-tiptap). The toolbar
+// toggles real marks (bold/italic/code); StarterKit adds lists, links, quotes,
+// code blocks, etc. Submit sends the body as HTML — the message pipeline carries
+// it opaquely (encrypted) and RichText renders it with a strict allowlist on the
+// receiving end, so formatting is preserved end-to-end.
 export const Composer: Component<{ onSend: (text: string) => void }> = (props) => {
-  const [text, setText] = createSignal("");
+  let ref!: HTMLDivElement;
+
   const submit = () => {
-    const t = text().trim();
-    if (!t) return;
-    props.onSend(t);
-    setText("");
+    const ed = editor();
+    if (!ed || ed.isEmpty || !ed.getText().trim()) return;
+    // Send the rich body as HTML; the message pipeline carries it opaquely and
+    // RichText renders it safely on the other end. (getText guards whitespace-
+    // only content that would still produce non-empty <p> markup.)
+    props.onSend(ed.getHTML());
+    ed.commands.clearContent();
+    ed.commands.focus();
   };
+
+  const editor = createEditor(() => ({
+    element: ref,
+    extensions: [StarterKit, Placeholder.configure({ placeholder: "Message" })],
+    editorProps: {
+      // Apply the input styling + an accessible name to the contenteditable.
+      attributes: { class: s.input, "aria-label": "Message", role: "textbox" },
+      // Enter sends; Shift+Enter inserts a newline (StarterKit hard-break).
+      handleKeyDown: (_view, event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          submit();
+          return true;
+        }
+        return false;
+      },
+    },
+  }));
+
+  // Reactive toolbar state derived from the editor's transactions.
+  const isEmpty = createEditorTransaction(editor, (ed) => (ed ? ed.isEmpty : true));
+  const isBold = createEditorTransaction(editor, (ed) => (ed ? ed.isActive("bold") : false));
+  const isItalic = createEditorTransaction(editor, (ed) => (ed ? ed.isActive("italic") : false));
+  const isCode = createEditorTransaction(editor, (ed) => (ed ? ed.isActive("code") : false));
+
   return (
     <div class={s.outer}>
       <div class={s.box}>
-        <div class={s.toolbar} aria-hidden="true">
-          <span class={`${s.tool} ${s.bold}`}>B</span>
-          <span class={`${s.tool} ${s.italic}`}>I</span>
-          <span class={s.tool}>🔗</span>
+        <div class={s.toolbar}>
+          <button
+            type="button"
+            class={`${s.tool} ${s.bold}`}
+            classList={{ [s.toolActive]: isBold() }}
+            aria-label="Bold"
+            aria-pressed={isBold()}
+            onClick={() => editor()?.chain().focus().toggleBold().run()}
+          >B</button>
+          <button
+            type="button"
+            class={`${s.tool} ${s.italic}`}
+            classList={{ [s.toolActive]: isItalic() }}
+            aria-label="Italic"
+            aria-pressed={isItalic()}
+            onClick={() => editor()?.chain().focus().toggleItalic().run()}
+          >I</button>
+          <button
+            type="button"
+            class={`${s.tool} ${s.codeTool}`}
+            classList={{ [s.toolActive]: isCode() }}
+            aria-label="Code"
+            aria-pressed={isCode()}
+            onClick={() => editor()?.chain().focus().toggleCode().run()}
+          >&lt;/&gt;</button>
         </div>
-        <input
-          class={s.input}
-          type="text"
-          value={text()}
-          placeholder="Message"
-          onInput={(e) => setText(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-        />
+        <div class={s.editorWrap} ref={ref} />
         <div class={s.strip}>
-          <Button variant="primary" onClick={submit} disabled={!text().trim()}>Send</Button>
+          <Button variant="primary" onClick={submit} disabled={isEmpty()}>Send</Button>
         </div>
       </div>
     </div>

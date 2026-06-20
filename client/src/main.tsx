@@ -1,6 +1,7 @@
+import "./assets/fonts/lato.css";
 import "./styles/theme.css";
 import { render } from "solid-js/web";
-import { createSignal } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import { App } from "./app/App";
 import { bootstrap } from "./app/bootstrap";
 import { CreateChannelModal } from "./widgets/create-channel-modal/CreateChannelModal";
@@ -49,7 +50,15 @@ if (root) {
   // rail avatar shows "?" until the next login — acceptable for now.
   void restoreSession();
 
-  render(() => (
+  // Single source of truth for loading a workspace's conversations: whenever the
+  // active workspace changes to a real id, (re)load its channels + DMs. This fires
+  // on login auto-select, on session-restore after a reload, and on manual
+  // workspace switching — so conversations are never fetched with an empty id.
+  render(() => {
+    createEffect(() => {
+      if (workspace.current()) void conversations.load();
+    });
+    return (
     <>
       <App
         conversation={conversation}
@@ -61,7 +70,8 @@ if (root) {
           setUserEmail(email);
           setUserLabel(email);
           await workspaces.load();
-          await conversations.load();
+          // Conversations load reactively when a workspace becomes active (effect
+          // below) — covering login, reload, and manual workspace switching alike.
         })()}
         onRegister={(email, username, pw) => void run(() => authFlow.register(email, username, pw))()}
         onCreateWorkspace={(name) => void run(() => workspaces.create(name))()}
@@ -75,7 +85,7 @@ if (root) {
         channels={conversations.channels()}
         dms={conversations.dms()}
         activeId={conversations.activeId()}
-        onSelect={(id) => conversations.select(id)}
+        onSelect={(id) => void conversations.select(id)}
         onCreateChannel={() => setCreateChannelOpen(true)}
         onNewDm={() => setNewDmOpen(true)}
         onAddPeople={() => { setDmResults([]); setAddPeopleOpen(true); }}
@@ -101,5 +111,6 @@ if (root) {
         onPick={(u) => void addPeople(u)}
       />
     </>
-  ), root);
+    );
+  }, root);
 }
