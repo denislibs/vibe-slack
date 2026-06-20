@@ -6,20 +6,20 @@ import { Button } from "../../shared/ui";
 import s from "./Composer.module.css";
 
 // Message composer backed by TipTap (ProseMirror via solid-tiptap). The toolbar
-// toggles real marks (bold/italic/code) and the editor supports lists, links,
-// etc. from StarterKit. NOTE: the app's message pipeline is plaintext (MLS
-// encrypts/stores/renders strings), so we send `editor.getText()` — formatting
-// is an editing affordance, not yet persisted. Full rich-text would need the
-// message payload + MessageList rendering to carry HTML.
+// toggles real marks (bold/italic/code); StarterKit adds lists, links, quotes,
+// code blocks, etc. Submit sends the body as HTML — the message pipeline carries
+// it opaquely (encrypted) and RichText renders it with a strict allowlist on the
+// receiving end, so formatting is preserved end-to-end.
 export const Composer: Component<{ onSend: (text: string) => void }> = (props) => {
   let ref!: HTMLDivElement;
 
   const submit = () => {
     const ed = editor();
-    if (!ed) return;
-    const text = ed.getText().trim();
-    if (!text) return;
-    props.onSend(text);
+    if (!ed || ed.isEmpty || !ed.getText().trim()) return;
+    // Send the rich body as HTML; the message pipeline carries it opaquely and
+    // RichText renders it safely on the other end. (getText guards whitespace-
+    // only content that would still produce non-empty <p> markup.)
+    props.onSend(ed.getHTML());
     ed.commands.clearContent();
     ed.commands.focus();
   };

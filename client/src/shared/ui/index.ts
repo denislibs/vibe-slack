@@ -9,3 +9,4 @@ export type { AvatarProps } from "./Avatar";
 export { Modal } from "./Modal";
 export type { ModalProps } from "./Modal";
 export { Spinner } from "./Spinner";
+export { RichText } from "./RichText";
