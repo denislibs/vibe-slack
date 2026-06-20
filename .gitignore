@@ -1,2 +1,6 @@
 backend/.env
 .playwright-mcp/
+
+# Throwaway verification/extraction artifacts
+/*.png
+/slack-css-vars.json

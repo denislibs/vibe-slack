@@ -1,27 +1,49 @@
+/* Design tokens — replicated 1:1 from Slack (app.slack.com, light + aubergine theme).
+   Measured source values: docs/slack-design/EXTRACTED-TOKENS.md */
 :root {
-  --radius: 8px; --radius-sm: 6px;
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px;
+  /* radii — Slack --dt_static_radius-* */
+  --radius: 8px; --radius-sm: 6px; --radius-xs: 4px; --radius-lg: 12px; --radius-pill: 9999px;
+  /* spacing — Slack --dt_static_space-* */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  /* sidebar/channel row height — Slack --sidebar_item_height */
   --row-h: 28px;
-  --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --lh: 1.46;
-  --font: -apple-system, "Segoe UI", system-ui, sans-serif;
-  --shadow: 0 8px 32px rgba(0,0,0,.45);
-  --transition: 120ms ease;
+  /* type scale — Slack --dt_static_type-size-* */
+  --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-18: 18px; --fs-22: 22px; --fs-28: 28px;
+  --fw-regular: 400; --fw-semibold: 600; --fw-bold: 700; --fw-black: 900;
+  --lh: 1.46; --lh-tight: 1.25;
+  /* Slack-Lato ≈ Lato (SIL OFL); falls back to Slack's own system stack */
+  --font: "Lato", "Slack-Lato", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+  /* shadows — Slack --dt_static_shadow-* */
+  --shadow-sm: 0 1px 2px 0 #0000000c;
+  --shadow: 0 4px 6px -4px #00000019, 0 10px 15px -3px #00000019;
+  --shadow-lg: 0 20px 25px -5px #00000019, 0 8px 10px -6px #00000019;
+  /* a11y focus ring — Slack --dt_static_shadow-a11y */
+  --focus-ring: 0 0 0 1px #1264a3, 0 0 0 5px #0e9dd333;
+  /* transitions — Slack --dt_static_transition-* */
+  --transition: 80ms cubic-bezier(.36, .19, .29, 1);
 }
-:root, [data-theme="dark"] {
-  --rail-bg:#121016; --sidebar-bg:#19171d; --sidebar-text:#cfc8d4; --sidebar-muted:#9b8fa6;
-  --sidebar-active-bg:#4d3a63; --sidebar-active-text:#ffffff; --sidebar-hover:rgba(255,255,255,.06);
-  --main-bg:#1a1d21; --text:#d1d2d3; --text-muted:#9a9b9e; --border:#35373b;
-  --accent:#7c3aed; --accent-text:#fff; --accent-hover:#6d28d9; --composer-bg:#222529;
-  --topbar-bg:#2c1733; --topbar-text:#d9d2de; --danger:#e01e5a; --input-bg:#222529;
-  --hover-row:rgba(255,255,255,.04);
-}
-[data-theme="light"] {
-  --rail-bg:#3a113c; --sidebar-bg:#3f0e40; --sidebar-text:#e6dbe8; --sidebar-muted:#bda9bf;
-  --sidebar-active-bg:#1164a3; --sidebar-active-text:#fff; --sidebar-hover:rgba(255,255,255,.10);
-  --main-bg:#ffffff; --text:#1d1c1d; --text-muted:#616061; --border:#e4e4e6;
+
+/* Default = Slack light theme with the classic aubergine sidebar (#3F0E40). */
+:root, [data-theme="light"] {
+  --rail-bg:#3f0e40; --sidebar-bg:#3f0e40;
+  --sidebar-text:rgba(246,228,255,.9); --sidebar-muted:rgba(246,228,255,.66);
+  --sidebar-active-bg:#f9edff; --sidebar-active-text:#39063a; --sidebar-hover:rgba(255,255,255,.1);
+  --main-bg:#ffffff; --text:#1d1c1d; --text-muted:#5e5d60; --border:#eaeaea;
   --accent:#007a5a; --accent-text:#fff; --accent-hover:#148567; --composer-bg:#fff;
-  --topbar-bg:#350d36; --topbar-text:#f4ecf4; --danger:#e01e5a; --input-bg:#fff;
-  --hover-row:rgba(0,0,0,.04);
+  --topbar-bg:#ffffff; --topbar-text:#1d1c1d; --danger:#e01e5a; --input-bg:#fff;
+  --hover-row:rgba(69,68,71,.06); --link:#1264a3;
+  --input-border:rgba(29,28,29,.3); --scrim:rgba(29,28,29,.7);
+}
+/* Optional dark theme. */
+[data-theme="dark"] {
+  --rail-bg:#121016; --sidebar-bg:#19171d; --sidebar-text:#cfc8d4; --sidebar-muted:#9b8fa6;
+  --sidebar-active-bg:#1164a3; --sidebar-active-text:#ffffff; --sidebar-hover:rgba(255,255,255,.06);
+  --main-bg:#1a1d21; --text:#d1d2d3; --text-muted:#9a9b9e; --border:#35373b;
+  --accent:#2eb67d; --accent-text:#fff; --accent-hover:#26a06d; --composer-bg:#222529;
+  --topbar-bg:#1a1d21; --topbar-text:#d9d2de; --danger:#e01e5a; --input-bg:#222529;
+  --hover-row:rgba(255,255,255,.04); --link:#1d9bd1;
+  --input-border:rgba(255,255,255,.2); --scrim:rgba(0,0,0,.7);
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }

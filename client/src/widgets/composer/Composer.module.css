@@ -34,8 +34,10 @@
   color: var(--text);
   font-family: inherit;
   font-size: var(--fs-15);
+  line-height: 22px;
   width: 100%;
-  padding: 9px 12px;
+  min-height: 38px;
+  padding: 8px 12px;
 }
 .input::placeholder {
   color: var(--text-muted);
